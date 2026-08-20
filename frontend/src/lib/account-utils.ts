@@ -47,3 +47,25 @@ export function getAccountLabel(account: {
   const mask = formatAccountMask(account)
   return mask ? `${name} ${mask}` : name
 }
+
+/**
+ * Account types offered in the create/edit dialogs, and the single source for
+ * turning a stored `type` into a translated label.
+ */
+export const ACCOUNT_TYPE_OPTIONS = [
+  { value: 'checking', labelKey: 'accounts.typeChecking' },
+  { value: 'savings', labelKey: 'accounts.typeSavings' },
+  { value: 'credit_card', labelKey: 'accounts.typeCreditCard' },
+  { value: 'investment', labelKey: 'accounts.typeInvestment' },
+  { value: 'wallet', labelKey: 'accounts.typeWallet' },
+] as const
+
+/**
+ * i18n key for an account type's label, or null for a type we don't have a
+ * label for — callers render nothing rather than a raw key like
+ * "accounts.typeFoo".
+ */
+export function getAccountTypeLabelKey(type: string | null | undefined): string | null {
+  if (!type) return null
+  return ACCOUNT_TYPE_OPTIONS.find((o) => o.value === type)?.labelKey ?? null
+}
