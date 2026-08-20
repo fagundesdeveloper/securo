@@ -372,3 +372,58 @@ def test_build_account_data_without_number_leaves_mask_none():
     acc = {"id": "acc-2", "name": "Conta", "type": "BANK", "balance": 0}
     out = _build_account_data(acc, PluggyProvider._map_account_type)
     assert out.masked_number is None
+
+
+# ---------------------------------------------------------------------------
+# Account type mapping: savings arrives in `subtype`, not `type`
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "pluggy_type,pluggy_subtype,expected",
+    [
+        ("BANK", "SAVINGS_ACCOUNT", "savings"),
+        ("BANK", "CHECKING_ACCOUNT", "checking"),
+        ("BANK", "", "checking"),
+        ("BANK", None, "checking"),
+        ("CREDIT", "CREDIT_CARD", "credit_card"),
+        ("SOMETHING_NEW", "", "checking"),
+    ],
+)
+def test_map_account_type_reads_subtype_for_savings(
+    pluggy_type, pluggy_subtype, expected
+):
+    assert (
+        PluggyProvider._map_account_type(pluggy_type, pluggy_subtype or "") == expected
+    )
+
+
+def test_build_account_data_types_savings_from_subtype():
+    """A savings account must not be filed as checking.
+
+    Pluggy reports it as type BANK / subtype SAVINGS_ACCOUNT, so a mapping
+    that only looks at `type` collapsed it into checking. Banks commonly give
+    the checking and savings of one holder the same name and the same masked
+    number, which left the two indistinguishable everywhere accounts are
+    listed.
+    """
+    from app.providers.pluggy import _build_account_data
+
+    poupanca = {
+        "id": "acc-1", "name": "itau", "type": "BANK",
+        "subtype": "SAVINGS_ACCOUNT", "balance": 83.12, "currencyCode": "BRL",
+    }
+    corrente = {
+        "id": "acc-2", "name": "itau", "type": "BANK",
+        "subtype": "CHECKING_ACCOUNT", "balance": 483.78, "currencyCode": "BRL",
+    }
+    assert _build_account_data(poupanca, PluggyProvider._map_account_type).type == "savings"
+    assert _build_account_data(corrente, PluggyProvider._map_account_type).type == "checking"
+
+
+def test_build_account_data_tolerates_missing_subtype():
+    """Older payloads and other flows may omit `subtype` entirely."""
+    from app.providers.pluggy import _build_account_data
+
+    acc = {"id": "acc-3", "name": "x", "type": "BANK", "balance": 1, "currencyCode": "BRL"}
+    assert _build_account_data(acc, PluggyProvider._map_account_type).type == "checking"
