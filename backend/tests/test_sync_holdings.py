@@ -641,3 +641,44 @@ async def test_next_day_sync_appends_new_asset_value(
     assert len(rows) == 2
     assert rows[0].date == yesterday and rows[0].amount == Decimal("100")
     assert rows[1].date == date.today() and rows[1].amount == Decimal("105")
+
+
+@pytest.mark.asyncio
+async def test_wallet_is_named_after_the_connection_the_user_named(
+    session: AsyncSession, test_user: User, mock_connection: BankConnection
+):
+    """A renamed connection names its wallet; the provider label is the fallback.
+
+    Pluggy reports every Open Finance item as "MeuPluggy", so naming wallets
+    from `institution_name` gave a multi-bank household MeuPluggy, MeuPluggy 2,
+    MeuPluggy 3 — even though its connections were already named per bank.
+    """
+    mock_connection.display_name = "Bradesco Felipe"
+    await session.commit()
+
+    _MockProvider._holdings = [_holding(current_value=Decimal("10.00"))]
+    assert mock_connection.credentials is not None
+    await _sync_holdings(session, test_user.id, mock_connection, mock_connection.credentials)
+    await session.commit()
+
+    asset = (await _assets_for(session, test_user))[0]
+    wallet = await session.get(AssetGroup, asset.group_id)
+    assert wallet is not None
+    assert wallet.name == "Bradesco Felipe"
+
+
+@pytest.mark.asyncio
+async def test_wallet_falls_back_to_institution_when_connection_unnamed(
+    session: AsyncSession, test_user: User, mock_connection: BankConnection
+):
+    assert mock_connection.display_name is None
+
+    _MockProvider._holdings = [_holding(current_value=Decimal("10.00"))]
+    assert mock_connection.credentials is not None
+    await _sync_holdings(session, test_user.id, mock_connection, mock_connection.credentials)
+    await session.commit()
+
+    asset = (await _assets_for(session, test_user))[0]
+    wallet = await session.get(AssetGroup, asset.group_id)
+    assert wallet is not None
+    assert wallet.name == "Mock Bank"
