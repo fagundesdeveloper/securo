@@ -233,6 +233,109 @@ RULE_PACKS: dict[str, dict[str, Any]] = {
                 {"field": "description", "op": "contains", "value": "CONDOMINIO"},
             ], "actions": [{"op": "set_category", "value": "housing"}], "priority": 10},
 
+            # Concessionárias. These are regional monopolies, so a user in that
+            # state inevitably transacts with them — unlike an optional brand,
+            # there is no "maybe" about needing the rule.
+            {"name": "Energia elétrica", "conditions_op": "or", "conditions": [
+                {"field": "description", "op": "starts_with", "value": "LIGHT"},
+                {"field": "description", "op": "starts_with", "value": "ENEL"},
+                {"field": "description", "op": "starts_with", "value": "CPFL"},
+                {"field": "description", "op": "starts_with", "value": "COPEL"},
+                {"field": "description", "op": "starts_with", "value": "CELESC"},
+                {"field": "description", "op": "starts_with", "value": "CEMIG"},
+                {"field": "description", "op": "contains", "value": "NEOENERGIA"},
+                {"field": "description", "op": "contains", "value": "EQUATORIAL ENERGIA"},
+                {"field": "description", "op": "contains", "value": "ENERGISA"},
+            ], "actions": [{"op": "set_category", "value": "housing"}], "priority": 10},
+
+            {"name": "Água e saneamento", "conditions_op": "or", "conditions": [
+                {"field": "description", "op": "starts_with", "value": "SABESP"},
+                {"field": "description", "op": "starts_with", "value": "CEDAE"},
+                {"field": "description", "op": "starts_with", "value": "SANEPAR"},
+                {"field": "description", "op": "starts_with", "value": "COPASA"},
+                {"field": "description", "op": "starts_with", "value": "EMBASA"},
+                {"field": "description", "op": "starts_with", "value": "COMPESA"},
+                {"field": "description", "op": "starts_with", "value": "CORSAN"},
+                {"field": "description", "op": "starts_with", "value": "CAGECE"},
+                {"field": "description", "op": "starts_with", "value": "SANEAGO"},
+                {"field": "description", "op": "contains", "value": "BRK AMBIENTAL"},
+                {"field": "description", "op": "contains", "value": "AGUAS DO RIO"},
+            ], "actions": [{"op": "set_category", "value": "housing"}], "priority": 10},
+
+            {"name": "Gás encanado", "conditions_op": "or", "conditions": [
+                {"field": "description", "op": "contains", "value": "COMGAS"},
+                {"field": "description", "op": "contains", "value": "NATURGY"},
+                {"field": "description", "op": "contains", "value": "CEG GAS"},
+            ], "actions": [{"op": "set_category", "value": "housing"}], "priority": 10},
+
+            # Bank and card charges. The default category is "Taxes & Fees" in
+            # every language, so fees belong here rather than in "Other".
+            {"name": "IOF / Tarifas / Juros", "conditions_op": "or", "conditions": [
+                {"field": "description", "op": "regex", "value": r"\bIOF\b"},
+                {"field": "description", "op": "contains", "value": "TARIFA"},
+                {"field": "description", "op": "contains", "value": "ENCARGOS"},
+                {"field": "description", "op": "contains", "value": "JUROS"},
+                {"field": "description", "op": "contains", "value": "MULTA"},
+                {"field": "description", "op": "contains", "value": "CUSTAS"},
+                {"field": "description", "op": "contains", "value": "ANUIDADE"},
+            ], "actions": [{"op": "set_category", "value": "taxes"}], "priority": 20},
+
+            {"name": "Combustível (Ipiranga / Petrobras)", "conditions_op": "or", "conditions": [
+                {"field": "description", "op": "contains", "value": "IPIRANGA"},
+                {"field": "description", "op": "contains", "value": "PETROBRAS"},
+                {"field": "description", "op": "contains", "value": "BR MANIA"},
+            ], "actions": [{"op": "set_category", "value": "transport"}], "priority": 10},
+
+            {"name": "Pedágio / Tag (Veloe, ConectCar)", "conditions_op": "or", "conditions": [
+                {"field": "description", "op": "contains", "value": "VELOE"},
+                {"field": "description", "op": "contains", "value": "CONECTCAR"},
+                {"field": "description", "op": "contains", "value": "MOVE MAIS"},
+            ], "actions": [{"op": "set_category", "value": "transport"}], "priority": 10},
+
+            {"name": "Atacado / Hipermercado", "conditions_op": "or", "conditions": [
+                {"field": "description", "op": "contains", "value": "ATACADAO"},
+                {"field": "description", "op": "contains", "value": "PAO DE ACUCAR"},
+                {"field": "description", "op": "contains", "value": "PÃO DE AÇÚCAR"},
+                {"field": "description", "op": "contains", "value": "SAM'S CLUB"},
+                {"field": "description", "op": "contains", "value": "TENDA ATACADO"},
+                {"field": "description", "op": "contains", "value": "MAKRO"},
+            ], "actions": [{"op": "set_category", "value": "groceries"}], "priority": 10},
+
+            {"name": "Farmácia (Pacheco / Pague Menos)", "conditions_op": "or", "conditions": [
+                {"field": "description", "op": "contains", "value": "PACHECO"},
+                {"field": "description", "op": "contains", "value": "PAGUE MENOS"},
+                {"field": "description", "op": "contains", "value": "PAGUEMENOS"},
+                {"field": "description", "op": "contains", "value": "ULTRAFARMA"},
+                {"field": "description", "op": "contains", "value": "PANVEL"},
+            ], "actions": [{"op": "set_category", "value": "health"}], "priority": 10},
+
+            {"name": "Zé Delivery / Bebidas", "conditions_op": "or", "conditions": [
+                {"field": "description", "op": "contains", "value": "ZE DELIVERY"},
+                {"field": "description", "op": "contains", "value": "ZÉ DELIVERY"},
+                {"field": "description", "op": "contains", "value": "EMPORIO DA CERVEJA"},
+            ], "actions": [{"op": "set_category", "value": "food"}], "priority": 10},
+
+            {"name": "Ingressos / Jogos", "conditions_op": "or", "conditions": [
+                {"field": "description", "op": "contains", "value": "TICKETMASTER"},
+                {"field": "description", "op": "contains", "value": "INGRESSE"},
+                {"field": "description", "op": "contains", "value": "SYMPLA"},
+                {"field": "description", "op": "starts_with", "value": "STEAM"},
+                {"field": "description", "op": "contains", "value": "PLAYSTATION"},
+            ], "actions": [{"op": "set_category", "value": "leisure"}], "priority": 10},
+
+            # Pet stores land on Shopping to match how Pluggy files them
+            # ("Pet supplies and vet" sits under Shopping) — there is no pets
+            # default category. Named chains only: a bare "PET" substring also
+            # matches PETROBRAS, CARPETE and COMPETE.
+            {"name": "Pet shop / Veterinário", "conditions_op": "or", "conditions": [
+                {"field": "description", "op": "contains", "value": "PETZ"},
+                {"field": "description", "op": "contains", "value": "COBASI"},
+                {"field": "description", "op": "contains", "value": "PETLOVE"},
+                {"field": "description", "op": "contains", "value": "PET SHOP"},
+                {"field": "description", "op": "contains", "value": "PETSHOP"},
+                {"field": "description", "op": "contains", "value": "VETERINARI"},
+            ], "actions": [{"op": "set_category", "value": "shopping"}], "priority": 10},
+
             {"name": "Curso / Escola / Faculdade", "conditions_op": "or", "conditions": [
                 {"field": "description", "op": "contains", "value": "ESCOLA"},
                 {"field": "description", "op": "contains", "value": "FACULDADE"},

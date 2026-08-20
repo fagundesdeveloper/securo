@@ -1122,3 +1122,67 @@ def test_br_pack_does_not_send_transfer_rails_to_transfers():
         if any(rail in blob for rail in rails):
             offenders.append(rule["name"])
     assert not offenders, offenders
+
+
+# BR pack: utilities, fees and brands (issue #285)
+# ---------------------------------------------------------------------------
+
+
+def _br_rule_matches(rule_name: str, description: str) -> bool:
+    import types
+
+    from app.services.rule_engine import evaluate_conditions
+    from app.services.rule_service import RULE_PACKS
+
+    rule = next(r for r in RULE_PACKS["BR"]["rules"] if r["name"] == rule_name)
+    tx = types.SimpleNamespace(
+        description=description, payee=None, notes=None, amount=10,
+        type="debit", account_id=None, payee_id=None, date=None,
+    )
+    return evaluate_conditions(rule["conditions_op"], rule["conditions"], tx)
+
+
+@pytest.mark.parametrize(
+    "rule_name,description,expected",
+    [
+        # A short token needs a word boundary, or it eats real merchants.
+        ("IOF / Tarifas / Juros", "IOF COMPRA INTERNACIONAL", True),
+        ("IOF / Tarifas / Juros", "BIOFARMA LTDA", False),
+        ("IOF / Tarifas / Juros", "TARIFA MENSALIDADE PACOTE", True),
+        ("Energia elétrica", "ENEL DISTRIBUICAO SP", True),
+        ("Água e saneamento", "SABESP 08/2026", True),
+        # "IGUA" would have matched the Iguatemi shopping mall, so the water
+        # utility of that name is deliberately absent from the pack.
+        ("Água e saneamento", "IGUATEMI SHOPPING", False),
+        ("Atacado / Hipermercado", "ATACADAO S.A.", True),
+        ("Combustível (Ipiranga / Petrobras)", "POSTO IPIRANGA 5000", True),
+        ("Zé Delivery / Bebidas", "ZE DELIVERY SP", True),
+        # Named chains only: a bare "PET" substring also matches these two.
+        ("Pet shop / Veterinário", "PETZ FILIAL 22", True),
+        ("Pet shop / Veterinário", "PETROBRAS BR", False),
+        ("Pet shop / Veterinário", "CARPETE E CIA", False),
+    ],
+)
+def test_br_pack_rule_matching(rule_name, description, expected):
+    assert _br_rule_matches(rule_name, description) is expected
+
+
+def test_br_pack_rule_names_are_unique():
+    """Rules are deduplicated by name on install, so a clash silently drops one."""
+    from app.services.rule_service import RULE_PACKS
+
+    names = [r["name"] for r in RULE_PACKS["BR"]["rules"]]
+    assert len(names) == len(set(names))
+
+
+def test_br_pack_targets_only_real_default_categories():
+    from app.services.category_service import DEFAULT_CATEGORIES_I18N
+    from app.services.rule_service import RULE_PACKS
+
+    targets = {
+        a["value"]
+        for r in RULE_PACKS["BR"]["rules"]
+        for a in r["actions"]
+        if a["op"] == "set_category"
+    }
+    assert not targets - set(DEFAULT_CATEGORIES_I18N)
