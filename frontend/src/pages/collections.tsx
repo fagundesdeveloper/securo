@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { collections as collectionsApi, accounts as accountsApi, assetGroups as assetGroupsApi } from '@/lib/api'
-import { getAccountName, sortAccountsByDisplayName } from '@/lib/account-utils'
+import { getAccountLabel, getAccountTypeLabelKey, sortAccountsByDisplayName } from '@/lib/account-utils'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -59,12 +59,6 @@ export default function CollectionsPage() {
     onSuccess: () => { invalidate(); setDeleting(null); toast.success(t('collections.deleted')) },
     onError: () => toast.error(t('common.error')),
   })
-
-  const accountName = useMemo(() => {
-    const map = new Map<string, string>()
-    ;(accounts ?? []).forEach((a) => map.set(a.id, getAccountName(a)))
-    return map
-  }, [accounts])
 
   const list = collections ?? []
 
@@ -124,7 +118,18 @@ export default function CollectionsPage() {
         open={dialogOpen}
         onClose={() => { setDialogOpen(false); setEditing(null) }}
         collection={editing}
-        accounts={sortAccountsByDisplayName(accounts ?? []).map((a) => ({ id: a.id, label: accountName.get(a.id) ?? a.name, currency: a.currency }))}
+        accounts={sortAccountsByDisplayName(accounts ?? []).map((a) => {
+          const typeKey = getAccountTypeLabelKey(a.type)
+          return {
+            id: a.id,
+            label: getAccountLabel(a),
+            // Name + mask still collide when a bank reports the checking and
+            // the savings of one holder identically; the type is what splits
+            // them, and the institution says which connection they came from.
+            sublabel: [a.institution_name, typeKey ? t(typeKey) : null].filter(Boolean).join(' · ') || null,
+            currency: a.currency,
+          }
+        })}
         wallets={(wallets ?? []).map((w) => ({ id: w.id, label: w.name }))}
         loading={createMutation.isPending || updateMutation.isPending}
         onSave={(payload) => {
@@ -157,7 +162,7 @@ function CollectionDialog({
   open: boolean
   onClose: () => void
   collection: Collection | null
-  accounts: { id: string; label: string; currency: string }[]
+  accounts: { id: string; label: string; sublabel?: string | null; currency: string }[]
   wallets: { id: string; label: string }[]
   loading: boolean
   onSave: (payload: { name: string; color: string; account_ids: string[]; wallet_ids: string[] }) => void
@@ -234,7 +239,12 @@ function CollectionDialog({
                       onChange={() => toggle(a.id)}
                       className="h-4 w-4 rounded border-border accent-primary"
                     />
-                    <span className="flex-1 truncate">{a.label}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate">{a.label}</span>
+                      {a.sublabel && (
+                        <span className="block truncate text-xs text-muted-foreground">{a.sublabel}</span>
+                      )}
+                    </span>
                     <span className="text-[10.5px] uppercase tracking-wide text-muted-foreground/70">{a.currency}</span>
                   </label>
                 ))
