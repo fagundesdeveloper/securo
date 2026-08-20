@@ -194,7 +194,7 @@ def _build_bill_data(raw: dict) -> Optional[BillData]:
 
 def _build_account_data(acc: dict, type_mapper) -> AccountData:
     """Map a Pluggy account payload to AccountData, including creditData when present."""
-    account_type = type_mapper(acc.get("type", ""))
+    account_type = type_mapper(acc.get("type", "") or "", acc.get("subtype", "") or "")
     credit_data = acc.get("creditData") or {}
 
     credit_limit: Optional[Decimal] = None
@@ -759,10 +759,20 @@ class PluggyProvider(BankProvider):
         return None
 
     @staticmethod
-    def _map_account_type(pluggy_type: str) -> str:
+    def _map_account_type(pluggy_type: str, pluggy_subtype: str = "") -> str:
+        """Map a Pluggy account to a Securo account type.
+
+        Savings lives in `subtype`, not `type`: Pluggy reports a savings
+        account as type BANK with subtype SAVINGS_ACCOUNT, and never sends
+        type "SAVINGS". Reading only `type` therefore filed every savings
+        account as checking — and since banks commonly report the checking
+        and savings of one holder under the same name and the same masked
+        number, the two became indistinguishable in every account picker.
+        """
+        if pluggy_type.upper() == "BANK" and "SAVINGS" in pluggy_subtype.upper():
+            return "savings"
         mapping = {
             "BANK": "checking",
             "CREDIT": "credit_card",
-            "SAVINGS": "savings",
         }
         return mapping.get(pluggy_type.upper(), "checking")

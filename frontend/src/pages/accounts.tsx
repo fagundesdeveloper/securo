@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { formatAccountMask, getAccountLabel, getAccountName } from '@/lib/account-utils'
+import { ACCOUNT_TYPE_OPTIONS, formatAccountMask, getAccountLabel, getAccountName } from '@/lib/account-utils'
 import { getConnectionName } from '@/lib/connection-utils'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -38,17 +38,6 @@ import { usePrivacyMode } from '@/hooks/use-privacy-mode'
 import { useAuth } from '@/contexts/auth-context'
 import { useWorkspace } from '@/contexts/workspace-context'
 import { formatCurrency } from '@/lib/format'
-
-// Account types offered in the create/edit dialog. Shared between the manual
-// type selector and the connected-account override selector so the list stays
-// in one place.
-const ACCOUNT_TYPE_OPTIONS = [
-  { value: 'checking', labelKey: 'accounts.typeChecking' },
-  { value: 'savings', labelKey: 'accounts.typeSavings' },
-  { value: 'credit_card', labelKey: 'accounts.typeCreditCard' },
-  { value: 'investment', labelKey: 'accounts.typeInvestment' },
-  { value: 'wallet', labelKey: 'accounts.typeWallet' },
-] as const
 
 function daysUntil(dateStr: string | null): number | null {
   if (!dateStr) return null
