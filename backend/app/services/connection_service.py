@@ -129,8 +129,14 @@ async def _sync_holdings(
     today = date.today()
 
     # Find-or-create the wallet that will own this connection's holdings.
-    # Name defaults to the institution; users can rename freely without
-    # breaking future syncs (matching is by external_id).
+    # The name defaults to whatever the user calls this connection, falling
+    # back to the institution the provider reported; users can rename freely
+    # afterwards without breaking future syncs (matching is by external_id).
+    # Preferring the connection's own display name matters most where the
+    # provider name carries no information: Pluggy returns "MeuPluggy" for
+    # every Open Finance item, so a household with several banks otherwise
+    # gets wallets named MeuPluggy, MeuPluggy 2, MeuPluggy 3 — while the
+    # connections themselves are already named "Bradesco", "Itau", "Nubank".
     group: Optional[AssetGroup] = None
     if holdings:
         group = await ensure_group_for_connection(
@@ -139,7 +145,7 @@ async def _sync_holdings(
             connection_id=connection.id,
             source=source,
             external_id=connection.external_id,
-            default_name=connection.institution_name,
+            default_name=connection.display_name or connection.institution_name,
         )
 
     # Also pull orphans (connection_id IS NULL) with the same source —
