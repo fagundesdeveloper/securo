@@ -121,10 +121,83 @@ async def test_match_pluggy_exact(session: AsyncSession, test_user, test_workspa
 
 @pytest.mark.asyncio
 async def test_match_pluggy_prefix(session: AsyncSession, test_user, test_workspace):
-    """Pluggy category with ' - ' prefix matches via split."""
+    """A ' - ' variant resolves through its mapped parent group.
+
+    "Same person transfer" is mapped, its PIX/TED/CASH variants are not, so
+    the prefix split is what makes them land on Transfers.
+    """
     await _make_category(session, test_user.id, "Transferências")
-    cat_id = await _match_pluggy_category(session, test_workspace.id, "Transfer - PIX")
+    cat_id = await _match_pluggy_category(
+        session, test_workspace.id, "Same person transfer - PIX"
+    )
     assert cat_id is not None
+
+
+@pytest.mark.asyncio
+async def test_match_pluggy_third_party_transfer_not_categorized(
+    session: AsyncSession, test_user, test_workspace
+):
+    """A transfer to somebody else must not be filed as an internal transfer.
+
+    Regression for #221: "Transfers" is treat_as_transfer, so mapping
+    third-party PIX/TED there dropped most Brazilian income and spending out
+    of the income/expense reports. The bare "Transfer" group is absent from
+    the map precisely so the prefix split cannot rescue these.
+    """
+    await _make_category(session, test_user.id, "Transferências")
+    for pluggy_category in (
+        "Transfer - PIX",
+        "Transfer - TED",
+        "Transfer - Bank Slip",
+        "Third party transfer - PIX",
+        "Third party transfers",
+    ):
+        cat_id = await _match_pluggy_category(
+            session, test_workspace.id, pluggy_category
+        )
+        assert cat_id is None, pluggy_category
+
+
+@pytest.mark.asyncio
+async def test_match_pluggy_own_movements_still_categorized(
+    session: AsyncSession, test_user, test_workspace
+):
+    """Money moving between the user's own places stays a transfer."""
+    await _make_category(session, test_user.id, "Transferências")
+    for pluggy_category in (
+        "Same person transfer",
+        "Same person transfer - TED",
+        "Credit card payment",
+        "Transfer - Internal",
+    ):
+        cat_id = await _match_pluggy_category(
+            session, test_workspace.id, pluggy_category
+        )
+        assert cat_id is not None, pluggy_category
+
+
+@pytest.mark.asyncio
+async def test_match_pluggy_resolves_any_language(
+    session: AsyncSession, test_user, test_workspace
+):
+    """Mapping goes through the internal key, so the seed language is irrelevant."""
+    await _make_category(session, test_user.id, "Groceries")  # en
+    assert await _match_pluggy_category(session, test_workspace.id, "Groceries")
+    await _make_category(session, test_user.id, "Lebensmittel")  # de
+    assert await _match_pluggy_category(session, test_workspace.id, "Groceries")
+
+
+def test_pluggy_category_map_targets_real_default_categories():
+    """Every mapped value must be a real DEFAULT_CATEGORIES_I18N key.
+
+    The previous table mapped to hardcoded pt-BR display names, so a
+    workspace seeded in any other language silently matched nothing.
+    """
+    from app.services.category_service import DEFAULT_CATEGORIES_I18N
+    from app.services.connection_service import PLUGGY_CATEGORY_MAP
+
+    unknown = {v for v in PLUGGY_CATEGORY_MAP.values() if v not in DEFAULT_CATEGORIES_I18N}
+    assert not unknown
 
 
 @pytest.mark.asyncio

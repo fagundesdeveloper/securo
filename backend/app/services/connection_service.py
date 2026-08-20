@@ -35,6 +35,7 @@ from app.services.account_service import (
     sync_opening_balance_for_connected_account,
 )
 from app.services.asset_group_service import ensure_group_for_connection
+from app.services.category_service import DEFAULT_CATEGORIES_I18N
 from app.services.credit_card_service import apply_effective_date
 from app.services.rule_engine import merge_notes
 from app.services.rule_service import apply_rules_to_transaction, preview_rules_for_transaction
@@ -56,30 +57,166 @@ def _clean_logo_url(value: object) -> Optional[str]:
     """
     return value if isinstance(value, str) and value.strip() else None
 
+# Pluggy transaction category -> Securo default-category internal key.
+#
+# Keys are the exact strings Pluggy's `GET /categories` returns (the same
+# values that land in a transaction's `category` field). Values are the
+# internal keys from DEFAULT_CATEGORIES_I18N, NOT display names — resolving
+# through the key means the mapping works whatever language the user's
+# categories were seeded in.
+#
+# A category is mapped only when a Securo default clearly covers it.
+# Everything else is deliberately absent: arriving uncategorized is a visible
+# prompt for the user to classify, whereas forcing it into "Other" looks
+# resolved when it isn't. Unmapped on purpose: Insurance, Loans and financing,
+# Legal obligations, Cashback, and the bare "Services" group (Pluggy uses it
+# as a parent over education/telecom/tickets/wellness, so it carries no
+# usable meaning on its own).
+#
+# Transfers need care. Pluggy already separates money you moved between your
+# own accounts from money that went to somebody else, and only the former is
+# a transfer in Securo's sense:
+#   - "Same person transfer*", "Credit card payment", "Transfer - Internal"
+#     are yours-to-yours -> `transfers` (treat_as_transfer, hidden from
+#     income/expense, which is correct).
+#   - "Transfer - PIX/TED/DOC/...", "Third party transfer*" are payments to
+#     and from other people. In Brazil that is how most real income and most
+#     real spending moves, so they must NOT be mapped to `transfers` or they
+#     vanish from every income/expense report.
 PLUGGY_CATEGORY_MAP = {
-    "Eating out": "Alimentação",
-    "Restaurants": "Alimentação",
-    "Food": "Alimentação",
-    "Groceries": "Mercado",
-    "Supermarkets": "Mercado",
-    "Pharmacy": "Saúde",
-    "Health": "Saúde",
-    "Taxi and ride-hailing": "Transporte",
-    "Transport": "Transporte",
-    "Gas": "Transporte",
-    "Travel": "Transporte",
-    "Housing": "Moradia",
-    "Rent": "Moradia",
-    "Utilities": "Moradia",
-    "Entertainment": "Lazer",
-    "Leisure": "Lazer",
-    "Education": "Educação",
-    "Subscriptions": "Assinaturas",
-    "Online services": "Assinaturas",
-    "Transfer": "Transferências",
-    "Transfers": "Transferências",
-    "Wire transfers": "Transferências",
+    # Groceries
+    "Groceries": "groceries",
+    # Food and drinks
+    "Food and drinks": "food",
+    "Eating out": "food",
+    "Food delivery": "food",
+    # Housing (incl. utilities)
+    "Housing": "housing",
+    "Rent": "housing",
+    "Houseware": "housing",
+    "Urban land and building tax": "housing",
+    "Utilities": "housing",
+    "Electricity": "housing",
+    "Gas": "housing",
+    "Water": "housing",
+    # Healthcare + wellness
+    "Healthcare": "health",
+    "Dentist": "health",
+    "Hospital clinics and labs": "health",
+    "Optometry": "health",
+    "Pharmacy": "health",
+    "Wellness and fitness": "health",
+    "Gyms and fitness centers": "health",
+    "Sports practice": "health",
+    "Wellness": "health",
+    # Transportation. Travel stays under transport to match the mapping this
+    # table already had for it.
+    "Transportation": "transport",
+    "Automotive": "transport",
+    "Bicycle": "transport",
+    "Car rental": "transport",
+    "Public transportation": "transport",
+    "Taxi and ride-hailing": "transport",
+    "Gas stations": "transport",
+    "Parking": "transport",
+    "Tolls and in vehicle payment": "transport",
+    "Traffic tickets": "transport",
+    "Vehicle maintenance": "transport",
+    "Vehicle ownership taxes and fees": "transport",
+    "Travel": "transport",
+    "Airport and airlines": "transport",
+    "Bus tickets": "transport",
+    "Mileage programs": "transport",
+    "Accomodation": "transport",
+    # Shopping
+    "Shopping": "shopping",
+    "Bookstore": "shopping",
+    "Clothing": "shopping",
+    "Electronics": "shopping",
+    "Kids and toys": "shopping",
+    "Office supplies": "shopping",
+    "Online shopping": "shopping",
+    "Pet supplies and vet": "shopping",
+    "Sports goods": "shopping",
+    # Digital services + telecom
+    "Digital services": "subscriptions",
+    "Gaming": "subscriptions",
+    "Music streaming": "subscriptions",
+    "Video streaming": "subscriptions",
+    "Telecommunications": "subscriptions",
+    "Internet": "subscriptions",
+    "Mobile": "subscriptions",
+    "TV": "subscriptions",
+    # Education
+    "Education": "education",
+    "Kindergarten": "education",
+    "Online Courses": "education",
+    "School": "education",
+    "University": "education",
+    # Leisure
+    "Leisure": "leisure",
+    "Tickets": "leisure",
+    "Cinema, theater and concerts": "leisure",
+    "Landmarks and museums": "leisure",
+    "Stadiums and arenas": "leisure",
+    "Gambling": "leisure",
+    "Lottery": "leisure",
+    "Online bet": "leisure",
+    # Donations
+    "Donations": "donations",
+    # Taxes & fees — the default category is "Taxes & Fees" in every language,
+    # so bank and card fees belong here rather than in "Other".
+    "Taxes": "taxes",
+    "Income taxes": "taxes",
+    "Tax on financial operations": "taxes",
+    "Taxes on investments": "taxes",
+    "Bank fees": "taxes",
+    "Account fees": "taxes",
+    "Credit card fees": "taxes",
+    "Wire transfer fees and ATM fees": "taxes",
+    # Income. "Proceeds interests and dividends" is cash actually paid out to
+    # the account, so it is income — not an investment movement whose
+    # counterpart is a holding.
+    "Income": "salary",
+    "Salary": "salary",
+    "Retirement": "salary",
+    "Entrepreneurial activities": "salary",
+    "Government aid": "salary",
+    "Non-recurring income": "salary",
+    "Proceeds interests and dividends": "salary",
+    # Investment movements (counterpart is the holding, not income/expense)
+    "Investments": "investments",
+    "Automatic investment": "investments",
+    "Fixed income": "investments",
+    "Mutual funds": "investments",
+    "Variable income": "investments",
+    "Margin": "investments",
+    "Pension": "investments",
+    # Genuinely internal movements
+    "Same person transfer": "transfers",
+    "Same person transfer - CASH": "transfers",
+    "Same person transfer - PIX": "transfers",
+    "Same person transfer - TED": "transfers",
+    "Credit card payment": "transfers",
+    "Transfer - Internal": "transfers",
+    # Catch-all
+    "Other": "other",
 }
+
+
+def _default_category_names(internal_key: str) -> list[str]:
+    """Every language variant of a default category's display name.
+
+    Categories are stored only by localized name, so a lookup has to try all
+    variants: a workspace seeded in English holds "Transport" while a pt-BR
+    one holds "Transporte", and both must resolve from the key `transport`.
+    """
+    data = DEFAULT_CATEGORIES_I18N.get(internal_key)
+    if not data:
+        return []
+    non_name_fields = {"icon", "color", "treat_as_transfer"}
+    return [v for f, v in data.items() if f not in non_name_fields and isinstance(v, str)]
+
 
 
 def _sync_assets_enabled(settings: Optional[dict]) -> bool:
@@ -353,11 +490,18 @@ async def _match_pluggy_category(
     # source of truth. Default keeps the historical behavior.
     if not enabled or not pluggy_category:
         return None
-    # Try exact match first, then prefix before " - " (e.g. "Transfer - PIX" → "Transfer")
-    app_name = PLUGGY_CATEGORY_MAP.get(pluggy_category)
-    if not app_name and " - " in pluggy_category:
-        app_name = PLUGGY_CATEGORY_MAP.get(pluggy_category.split(" - ")[0])
-    if not app_name:
+    # Exact match first, then the group prefix before " - ". The prefix step
+    # exists for "Same person transfer - PIX" and friends, which resolve to
+    # the mapped "Same person transfer". It deliberately does NOT rescue
+    # "Transfer - PIX": the bare "Transfer" group is absent from the map
+    # because a transfer to a third party is real income or expense.
+    internal_key = PLUGGY_CATEGORY_MAP.get(pluggy_category)
+    if not internal_key and " - " in pluggy_category:
+        internal_key = PLUGGY_CATEGORY_MAP.get(pluggy_category.split(" - ")[0])
+    if not internal_key:
+        return None
+    names = _default_category_names(internal_key)
+    if not names:
         return None
     # Scope to the connection's workspace: a user in multiple workspaces owns
     # the same default category names in each, so a user_id-only lookup returns
@@ -365,7 +509,7 @@ async def _match_pluggy_category(
     # never crash the whole sync even if a workspace somehow has name dupes.
     result = await session.execute(
         select(Category.id)
-        .where(Category.workspace_id == workspace_id, Category.name == app_name)
+        .where(Category.workspace_id == workspace_id, Category.name.in_(names))
         .limit(1)
     )
     return result.scalars().first()

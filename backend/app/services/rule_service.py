@@ -126,6 +126,16 @@ UNIVERSAL_RULES = [
 
 # ─── Country-specific rule packs (optional, not auto-applied) ───
 RULE_PACKS: dict[str, dict[str, Any]] = {
+    # Note on PIX / TED / TRANSFERENCIA: this pack intentionally has no rule
+    # for them. A transfer rail says how the money moved, never what it was
+    # for — a PIX can be salary, rent, or a loan to a friend. Rules that
+    # categorized every PIX as `transfers` (treat_as_transfer) silently
+    # removed most Brazilian income and spending from income/expense reports
+    # (issue #221). Where the bank connection provides it, Pluggy already
+    # separates "Same person transfer*" (genuinely internal) from
+    # "Transfer - PIX" / "Third party transfer*" (real third-party money);
+    # see PLUGGY_CATEGORY_MAP. Anything left is per-user knowledge and
+    # belongs in a user rule, not in a country pack.
     "BR": {
         "name": "Brazil",
         "flag": "\U0001F1E7\U0001F1F7",
@@ -144,14 +154,6 @@ RULE_PACKS: dict[str, dict[str, Any]] = {
                 {"field": "description", "op": "starts_with", "value": "MERCADOLIVRE"},
                 {"field": "description", "op": "starts_with", "value": "MERCADO LIVRE"},
             ], "actions": [{"op": "set_category", "value": "shopping"}], "priority": 10},
-
-            {"name": "Pix Recebido", "conditions_op": "and", "conditions": [
-                {"field": "description", "op": "regex", "value": "PIX.*RECEBIDO"},
-            ], "actions": [{"op": "set_category", "value": "transfers"}], "priority": 50},
-
-            {"name": "Transferência", "conditions_op": "and", "conditions": [
-                {"field": "description", "op": "contains", "value": "TRANSFERENCIA"},
-            ], "actions": [{"op": "set_category", "value": "transfers"}], "priority": 90},
 
             {"name": "Shopee / Magazine Luiza", "conditions_op": "or", "conditions": [
                 {"field": "description", "op": "starts_with", "value": "SHOPEE"},
@@ -207,10 +209,6 @@ RULE_PACKS: dict[str, dict[str, Any]] = {
                 {"field": "description", "op": "contains", "value": "DOACAO"},
                 {"field": "description", "op": "contains", "value": "CARIDADE"},
             ], "actions": [{"op": "set_category", "value": "donations"}], "priority": 10},
-
-            {"name": "Pix Enviado", "conditions_op": "and", "conditions": [
-                {"field": "description", "op": "regex", "value": "PIX.*ENVIADO|PIX.*TRANSF"},
-            ], "actions": [{"op": "set_category", "value": "transfers"}], "priority": 50},
 
             {"name": "Estacionamento / Pedágio", "conditions_op": "or", "conditions": [
                 {"field": "description", "op": "contains", "value": "ESTACIONAMENTO"},

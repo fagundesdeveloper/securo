@@ -1088,3 +1088,37 @@ async def test_get_installed_packs(session: AsyncSession, test_user, test_worksp
 
     packs_after = await get_installed_packs(session, test_user.id)
     assert packs_after["BR"] is True
+
+
+# ---------------------------------------------------------------------------
+# Country packs must not hide real money (issue #221)
+# ---------------------------------------------------------------------------
+
+
+def test_br_pack_does_not_send_transfer_rails_to_transfers():
+    """No BR pack rule may categorize a transfer rail as an internal transfer.
+
+    `transfers` is treat_as_transfer, so anything filed there disappears from
+    income/expense reports. PIX/TED/TRANSFERENCIA describe how money moved,
+    not what it was for: in Brazil most salary, rent and freelance income
+    arrives by PIX, and blanket rules on those words removed it from every
+    report. Detecting a genuinely internal movement needs the counterparty,
+    which only the provider or the user knows.
+    """
+    from app.services.rule_service import RULE_PACKS
+
+    rails = ("PIX", "TRANSFERENCIA", "TRANSFERÊNCIA", "TED", "DOC")
+    offenders = []
+    for rule in RULE_PACKS["BR"]["rules"]:
+        targets_transfers = any(
+            a.get("op") == "set_category" and a.get("value") == "transfers"
+            for a in rule["actions"]
+        )
+        if not targets_transfers:
+            continue
+        blob = " ".join(
+            str(c.get("value", "")) for c in rule["conditions"]
+        ).upper() + " " + rule["name"].upper()
+        if any(rail in blob for rail in rails):
+            offenders.append(rule["name"])
+    assert not offenders, offenders
