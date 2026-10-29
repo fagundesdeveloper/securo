@@ -25,19 +25,21 @@ from app.services.fx_rate_service import stamp_primary_amount
 from app.services.payee_service import get_or_create_payee
 
 
-# Descriptions used by some Brazilian banks (e.g. Banco do Brasil) for
-# balance-summary rows that arrive as <STMTTRN> blocks but are not real
-# transactions. Matched case-insensitively against MEMO/NAME.
-_OFX_BALANCE_ROW_DESCRIPTIONS = (
+# Descriptions used by some Brazilian banks for balance-summary rows that
+# arrive looking like transactions but are not: Banco do Brasil emits them as
+# <STMTTRN> blocks, BS2 as rows of its statement CSV. Matched
+# case-insensitively against the row's description fields.
+_BALANCE_ROW_DESCRIPTIONS = (
     "saldo anterior",
+    "saldo inicial",
     "saldo do dia",
     "saldo final",
     "s a l d o",
 )
 
 
-def _decode_ofx_bytes(content: bytes) -> tuple[str, str]:
-    """Decode OFX content to text, trying UTF-8 then falling back to Latin-1.
+def _decode_statement_bytes(content: bytes) -> tuple[str, str]:
+    """Decode statement content to text, trying UTF-8 then falling back to Latin-1.
 
     Returns (text, encoding) so callers can re-encode consistently later.
     """
@@ -122,7 +124,7 @@ def _ensure_ofx_sgml_header(text: str, encoding: str) -> str:
 
 def _preprocess_ofx(content: bytes) -> bytes:
     """Apply text-level fixups ofxparse needs before it can parse the file."""
-    text, encoding = _decode_ofx_bytes(content)
+    text, encoding = _decode_statement_bytes(content)
     text = _patch_empty_fitids(text)
     text = _ensure_ofx_sgml_header(text, encoding)
     return text.encode(encoding, errors="replace")
@@ -132,7 +134,7 @@ def _is_balance_summary_row(description: str | None) -> bool:
     if not description:
         return False
     normalized = description.strip().lower()
-    return any(normalized.startswith(prefix) for prefix in _OFX_BALANCE_ROW_DESCRIPTIONS)
+    return any(normalized.startswith(prefix) for prefix in _BALANCE_ROW_DESCRIPTIONS)
 
 
 def parse_ofx(content: bytes) -> list[TransactionImport]:
@@ -402,6 +404,331 @@ def detect_csv_columns(content: bytes) -> list[str]:
     dialect = _sniff_csv_dialect(text)
     reader = csv.DictReader(io.StringIO(text), dialect=dialect)
     return [f.strip() for f in (reader.fieldnames or []) if f and f.strip()]
+
+
+# Noh (noh.com.br) is a Brazilian joint account for couples. Each partner has
+# their own pocket, and when one of them spends, Noh mirrors the charge with a
+# "Saldo movido" row that moves the same amount between pockets. The export
+# carries only one leg of that internal move, always as an outflow, so every
+# such row re-books spending the file already lists: 190 of the 481 rows, and
+# R$ 51.600, in a three-month export. Each one was checked against the charges
+# of its own day — it equals either a single charge exactly, or a charge netted
+# against a card adjustment that posted days later — so none of them is money
+# leaving the account, and none says anything the charge rows don't.
+#
+# "Saldo adicionado" is the opposite and is kept: that is money put into the
+# account from outside it.
+_NOH_HEADER = ('data', 'iniciador', 'método', 'descrição', 'valor', 'tipo')
+_NOH_POCKET_TRANSFER = 'saldo movido'
+
+
+def is_noh_csv(content: bytes) -> bool:
+    """True when the upload is a Noh statement export.
+
+    Recognised by its exact column layout: Noh offers no Open Finance feed and
+    no per-row identifier, so the header is all there is to go on.
+    """
+    try:
+        header = detect_csv_columns(content)
+    except Exception:
+        return False
+    return tuple(column.lower() for column in header) == _NOH_HEADER
+
+
+def parse_noh_csv(content: bytes) -> list[TransactionImport]:
+    """Parse a Noh statement export.
+
+    Fixed layout, so nothing here is detected: DD/MM/YYYY dates, "-R$ 1.234,56"
+    amounts whose sign (not the Tipo column) decides debit vs credit, and the
+    Iniciador/Método pair kept as notes — on a couple's account "who spent it"
+    is the thing the description never says.
+
+    Two kinds of row come back pre-excluded rather than dropped, so the import
+    review shows what was left out and the user can put any of it back: the
+    "Saldo movido" pocket transfers, and same-day reversal pairs.
+
+    Every row gets a deterministic external_id. Noh issues no transaction id,
+    and the field-based duplicate check this would otherwise fall back to also
+    collapses rows that are identical *and* real — one statement day holds
+    one vendor billed twice at R$ 13,00, and another two boletos of R$ 911,24 —
+    so re-importing an overlapping date range has to match on something that
+    survives a legitimate repeat. The occurrence counter is per identical row
+    within a day, which keeps an id stable no matter where the export window
+    starts or how Noh orders a day's rows.
+    """
+    text = content.decode('utf-8-sig')
+    reader = csv.DictReader(io.StringIO(text), dialect=_sniff_csv_dialect(text))
+
+    parsed = []
+    for raw_row in reader:
+        row = {
+            (k or '').lower().strip(): (v or '').strip()
+            for k, v in raw_row.items()
+        }
+        try:
+            txn_date = datetime.strptime(row['data'], '%d/%m/%Y').date()
+            signed = Decimal(normalize_amount(row['valor']))
+        except Exception:
+            continue  # Skip unreadable rows, as the generic CSV parser does
+        parsed.append((txn_date, signed, row))
+
+    # A charge and its equal, opposite twin on the same day under the same
+    # description are a card reversal, not income — Noh posts both legs. They
+    # net to zero, so both are excluded; keeping them would book the positive
+    # leg as R$ 361,20 of income from a supermarket.
+    by_day_description: dict[tuple, list[int]] = {}
+    for index, (txn_date, _signed, row) in enumerate(parsed):
+        by_day_description.setdefault(
+            (txn_date, row.get('descrição', '')), []
+        ).append(index)
+
+    reversals: set[int] = set()
+    for group in by_day_description.values():
+        for index in group:
+            if index in reversals or parsed[index][1] <= 0:
+                continue
+            twin = next(
+                (
+                    other for other in group
+                    if other not in reversals
+                    and parsed[other][1] == -parsed[index][1]
+                ),
+                None,
+            )
+            if twin is not None:
+                reversals.update((index, twin))
+
+    occurrences: dict[str, int] = {}
+    transactions = []
+    for index, (txn_date, signed, row) in enumerate(parsed):
+        initiator = row.get('iniciador', '')
+        method = row.get('método', '')
+        description = row.get('descrição', '') or 'Noh'
+
+        fingerprint = '|'.join(
+            [txn_date.isoformat(), initiator, method, description, str(signed)]
+        )
+        occurrence = occurrences.get(fingerprint, 0)
+        occurrences[fingerprint] = occurrence + 1
+        digest = hashlib.sha1(fingerprint.encode('utf-8')).hexdigest()[:8]
+
+        is_pocket_transfer = description.lower() == _NOH_POCKET_TRANSFER
+        is_reversal = index in reversals
+        note_parts = [initiator, method]
+        if is_pocket_transfer:
+            note_parts.append('transferência entre caixinhas')
+        elif is_reversal:
+            note_parts.append('estorno (par que se anula no mesmo dia)')
+
+        transactions.append(TransactionImport(
+            description=description,
+            amount=abs(signed),
+            date=txn_date,
+            type='credit' if signed > 0 else 'debit',
+            external_id=f'noh:{txn_date.isoformat()}:{signed}:{digest}:{occurrence}',
+            notes=' · '.join(part for part in note_parts if part),
+            excluded=is_pocket_transfer or is_reversal,
+        ))
+
+    return transactions
+
+
+# C6 Bank prints eight lines of heading above the table.
+_C6_HEADER = (
+    'data lançamento', 'data contábil', 'título', 'descrição',
+    'entrada(r$)', 'saída(r$)', 'saldo do dia(r$)',
+)
+
+
+def _statement_body_from_header(
+    content: bytes, header: tuple[str, ...], delimiter: str = ','
+) -> str | None:
+    """Return a statement CSV's body, starting at the row matching `header`.
+
+    Several banks print the account and period above the table, so the upload
+    is only a CSV from its header row down and csv.DictReader on the raw bytes
+    reads the first heading line as the header. The row is found by its column
+    names rather than by counting heading lines, so a heading that gains or
+    loses a line still imports. Returns None when the file carries no such
+    header, which is how each bank's `is_*_csv` says "not mine".
+
+    The BOM is stripped per line, not just at the front: BS2 writes one before
+    arbitrary rows in the middle of the file, which would otherwise end up
+    glued to that row's date.
+    """
+    try:
+        text, _ = _decode_statement_bytes(content)
+    except Exception:
+        return None
+    lines = [line.lstrip('\ufeff') for line in text.splitlines()]
+    for index, line in enumerate(lines):
+        if not line.lower().startswith(header[0]):
+            continue
+        found = tuple(
+            column.strip().lower()
+            for column in next(csv.reader([line], delimiter=delimiter))
+        )
+        return '\n'.join(lines[index:]) if found == header else None
+    return None
+
+
+def is_c6_csv(content: bytes) -> bool:
+    """True when the upload is a C6 Bank current-account statement export."""
+    return _statement_body_from_header(content, _C6_HEADER) is not None
+
+
+def parse_c6_csv(content: bytes) -> list[TransactionImport]:
+    """Parse a C6 Bank current-account statement export.
+
+    Fixed layout: DD/MM/YYYY dates, split Entrada/Saída columns with 0.00 in
+    the unused one, and dot-decimal amounts (not the comma-decimal the rest of
+    the Brazilian exports here use — `normalize_amount` reads both).
+
+    `Título` carries the counterparty and becomes the description; `Descrição`
+    repeats it on half the rows and otherwise holds the invoice reference
+    ("NF-10") or a generic "TRANSF ENVIADA PIX", so it is kept as a note only
+    where it says something new. `Data Contábil` is noted when it differs from
+    the posting date, which happens when a transfer settles a day or two later.
+
+    `Saldo do Dia` is the running end-of-day balance, not a transaction, so it
+    is not imported — but it closes exactly against the summed rows, which is
+    what the parser's test checks.
+
+    Like Noh, C6 issues no transaction id, so each row gets a deterministic
+    one; see `parse_noh_csv` for why the field-based fallback is not enough.
+    The fingerprint is case-folded here because one export already writes the
+    same counterparty both in upper case and in title case — an id that moved
+    with the casing would re-import rows that are already in.
+    """
+    body = _statement_body_from_header(content, _C6_HEADER)
+    if body is None:
+        raise ValueError("Not a C6 Bank statement export")
+
+    occurrences: dict[str, int] = {}
+    transactions = []
+    for raw_row in csv.DictReader(io.StringIO(body)):
+        row = {
+            (k or '').strip().lower(): (v or '').strip()
+            for k, v in raw_row.items()
+        }
+        try:
+            posted = row['data lançamento']
+            txn_date = datetime.strptime(posted, '%d/%m/%Y').date()
+            inflow = Decimal(normalize_amount(row['entrada(r$)']) or '0')
+            outflow = Decimal(normalize_amount(row['saída(r$)']) or '0')
+        except Exception:
+            continue  # Heading leftovers and the trailing blank line land here
+        signed = inflow - outflow
+        if not signed:
+            continue  # No money moved; C6 writes 0.00 in the column it is not using
+
+        title = row.get('título', '') or 'C6'
+        memo = row.get('descrição', '')
+        booked = row.get('data contábil', '')
+
+        note_parts = []
+        if memo and memo.casefold() != title.casefold():
+            note_parts.append(memo)
+        if booked and booked != posted:
+            note_parts.append(f'compensado em {booked}')
+
+        fingerprint = '|'.join(
+            [txn_date.isoformat(), title.casefold(), memo.casefold(), str(signed)]
+        )
+        occurrence = occurrences.get(fingerprint, 0)
+        occurrences[fingerprint] = occurrence + 1
+        digest = hashlib.sha1(fingerprint.encode('utf-8')).hexdigest()[:8]
+
+        transactions.append(TransactionImport(
+            description=title,
+            amount=abs(signed),
+            date=txn_date,
+            type='credit' if signed > 0 else 'debit',
+            external_id=f'c6:{txn_date.isoformat()}:{signed}:{digest}:{occurrence}',
+            notes=' · '.join(note_parts) or None,
+        ))
+
+    return transactions
+
+
+# BS2 prints ten lines of heading above the table and separates with ";".
+_BS2_HEADER = (
+    'datacontabil', 'data operação', 'tipo', 'detalhe', 'banco', 'agencia',
+    'conta', 'identificador da transação', 'identificador da movimentação',
+    'valor', 'observação',
+)
+
+
+def is_bs2_csv(content: bytes) -> bool:
+    """True when the upload is a Banco BS2 business statement export."""
+    return _statement_body_from_header(content, _BS2_HEADER, ';') is not None
+
+
+def parse_bs2_csv(content: bytes) -> list[TransactionImport]:
+    """Parse a Banco BS2 business current-account statement export.
+
+    Semicolon-separated, "R$ -1.024,51" amounts, DD/MM/YYYY in `DataContabil`
+    while `Data Operação` repeats it with the time.
+
+    Unlike the other statement exports here, BS2 numbers its rows:
+    `Identificador da movimentação` is the account's own ledger key (bank,
+    branch, account, date and a daily sequence), unique per row, so duplicate
+    detection uses the bank's identifier instead of a synthetic one. Its
+    `Identificador da transação` — a PIX end-to-end id, a TED id or a UUID —
+    stands in on the rare row that has no movement key.
+
+    `Detalhe` carries the counterparty with its CNPJ or CPF
+    ("TED C RECEBIDA - 00000000000191 - CLIENTE DELTA LTDA") and becomes the
+    description; `Tipo` and `Observação` are kept as notes.
+
+    The opening and closing balance rows are dropped. They are not optional
+    noise: the closing one is a full-arity row whose amount is the balance
+    itself, so importing it books the entire account balance as a credit,
+    while the opening one is written a field short, which shifts every column
+    after it.
+    """
+    body = _statement_body_from_header(content, _BS2_HEADER, ';')
+    if body is None:
+        raise ValueError("Not a BS2 statement export")
+
+    transactions = []
+    for raw_row in csv.DictReader(io.StringIO(body), delimiter=';'):
+        row = {
+            (k or '').strip().lower(): (v or '').strip()
+            for k, v in raw_row.items() if k is not None
+        }
+        detail = row.get('detalhe', '')
+        kind = row.get('tipo', '')
+        if _is_balance_summary_row(kind) or _is_balance_summary_row(detail):
+            continue
+        try:
+            txn_date = datetime.strptime(row['datacontabil'], '%d/%m/%Y').date()
+            signed = Decimal(normalize_amount(row['valor']))
+        except Exception:
+            continue  # Heading leftovers and the closing footer line land here
+        if not signed:
+            continue
+
+        external_id = (
+            row.get('identificador da movimentação')
+            or row.get('identificador da transação')
+            or None
+        )
+        notes = ' · '.join(
+            part for part in (kind, row.get('observação', ''))
+            if part and part.casefold() != detail.casefold()
+        )
+
+        transactions.append(TransactionImport(
+            description=detail or kind or 'BS2',
+            amount=abs(signed),
+            date=txn_date,
+            type='credit' if signed > 0 else 'debit',
+            external_id=external_id,
+            notes=notes or None,
+        ))
+
+    return transactions
 
 
 def parse_csv(

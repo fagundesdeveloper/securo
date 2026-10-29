@@ -24,6 +24,34 @@ async def test_preview_csv_import(client: AsyncClient, auth_headers, test_accoun
 
 
 @pytest.mark.asyncio
+async def test_preview_noh_csv(client: AsyncClient, auth_headers, test_account):
+    """A Noh export is routed to its own parser, not the generic CSV path.
+
+    It reports format "noh" and no columns, so the import UI offers none of
+    the CSV options: the layout is fixed and the parser ignores all of them.
+    """
+    csv_content = (
+        'Data,Iniciador,Método,Descrição,Valor,Tipo\n'
+        '28/10/2026,Ana,Cartão,MERCADO CENTRAL SP BR,"-R$ 50,00",Saída\n'
+        '28/10/2026,Bruno,Noh,Saldo movido,"-R$ 50,00",Saída\n'
+    ).encode("utf-8")
+    response = await client.post(
+        "/api/transactions/import/preview",
+        headers=auth_headers,
+        files={"file": ("Noh_extrato.csv", csv_content, "text/csv")},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["detected_format"] == "noh"
+    assert data["csv_columns"] == []
+    charge, moved = data["transactions"]
+    assert charge["description"] == "MERCADO CENTRAL SP BR"
+    assert charge["excluded"] is False
+    assert charge["external_id"].startswith("noh:2026-10-28:")
+    assert moved["excluded"] is True
+
+
+@pytest.mark.asyncio
 async def test_preview_csv_returns_columns(client: AsyncClient, auth_headers, test_account):
     """The preview response exposes the CSV header columns for the mapping UI."""
     csv_content = b"Posted On,Memo Line,Movement\n2026-01-10,COFFEE,-12.50\n"

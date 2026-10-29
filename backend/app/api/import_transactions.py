@@ -73,6 +73,24 @@ async def preview_import(
         elif filename.lower().endswith('.xml') or filename.lower().endswith('.camt'):
             transactions = import_service.parse_camt(content)
             detected_format = "camt"
+        elif filename.lower().endswith('.csv') and import_service.is_bs2_csv(content):
+            transactions = import_service.parse_bs2_csv(content)
+            detected_format = "bs2"
+        elif filename.lower().endswith('.csv') and import_service.is_c6_csv(content):
+            # Same reasoning as Noh below: a fixed layout the parser already
+            # knows, and synthetic external_ids that make duplicate detection
+            # exact. C6 also needs its own parser just to be read at all — the
+            # file opens with eight lines of heading above the CSV table.
+            transactions = import_service.parse_c6_csv(content)
+            detected_format = "c6"
+        elif filename.lower().endswith('.csv') and import_service.is_noh_csv(content):
+            # Noh's layout is fixed, so none of the CSV options below apply:
+            # the parser already knows its date and amount formats, and the
+            # external_ids it synthesizes make duplicate detection exact
+            # instead of optional (import_transactions forces it on for any
+            # format other than "csv").
+            transactions = import_service.parse_noh_csv(content)
+            detected_format = "noh"
         elif filename.lower().endswith('.csv'):
             detected_format = "csv"
             try:

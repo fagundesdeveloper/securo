@@ -12,7 +12,13 @@ from app.models.user import User
 from app.services.import_service import (
     _preprocess_ofx,
     detect_csv_columns,
+    is_bs2_csv,
+    is_c6_csv,
+    is_noh_csv,
+    parse_bs2_csv,
+    parse_c6_csv,
     parse_csv,
+    parse_noh_csv,
     parse_ofx,
     parse_qif,
     parse_camt,
@@ -242,6 +248,22 @@ class TestParseCsv:
         assert transactions[0].amount == Decimal("5000.00")
         assert transactions[1].type == "debit"
         assert transactions[1].amount == Decimal("1200.00")
+
+    def test_parse_csv_minus_before_currency_symbol(self):
+        """"-R$ 150,99" must parse: the minus sits before the symbol.
+
+        Stripping only "R$" leaves "- 150,99", whose inner space Decimal
+        rejects. Brazilian exports write the sign on this side of the symbol.
+        """
+        csv_content = (
+            'data,descricao,valor\n'
+            '10/02/2026,MERCADO,"-R$ 1.234,56"\n'
+        )
+        transactions = parse_csv(csv_content.encode("utf-8"))
+
+        assert len(transactions) == 1
+        assert transactions[0].amount == Decimal("1234.56")
+        assert transactions[0].type == "debit"
 
     def test_parse_csv_brazilian_amount(self):
         """CSV using comma as the decimal separator in the amount field."""
@@ -2433,3 +2455,245 @@ async def test_import_tolerates_duplicate_external_id_rows(
         )
     )).scalars().all()
     assert len(remaining) == 2
+
+
+# A Noh export, trimmed to the shapes that matter: a charge mirrored by its
+# pocket transfer, a same-day reversal pair, two identical real charges on one
+# day, and a deposit from outside the account.
+NOH_CSV = (
+    'Data,Iniciador,Método,Descrição,Valor,Tipo\n'
+    '28/10/2026,Ana,Cartão,MERCADO CENTRAL SP BR,"-R$ 1.234,56",Saída\n'
+    '28/10/2026,Bruno,Noh,Saldo movido,"-R$ 1.234,56",Saída\n'
+    '20/10/2026,Bruno,Cartão,SUPERMERCADO X SP BR,"R$ 361,20",Entrada\n'
+    '20/10/2026,Bruno,Cartão,SUPERMERCADO X SP BR,"-R$ 361,20",Saída\n'
+    '07/08/2026,Ana,Cartão,CANTINA ABC SP BR,"-R$ 13,00",Saída\n'
+    '07/08/2026,Ana,Cartão,CANTINA ABC SP BR,"-R$ 13,00",Saída\n'
+    '30/08/2026,Ana,Noh,Saldo adicionado,"R$ 596,00",Entrada\n'
+).encode("utf-8")
+
+
+class TestParseNohCsv:
+    """Tests for the Noh (noh.com.br) statement export."""
+
+    def test_is_noh_csv(self):
+        """Recognised by its exact header; a generic CSV is left alone."""
+        assert is_noh_csv(NOH_CSV) is True
+        assert is_noh_csv(b"data,descricao,valor\n10/02/2026,UBER,-25.50\n") is False
+
+    def test_excludes_pocket_transfers_not_deposits(self):
+        """"Saldo movido" is an internal move; "Saldo adicionado" is real money."""
+        by_description = {t.description: t for t in parse_noh_csv(NOH_CSV)}
+
+        moved = by_description["Saldo movido"]
+        assert moved.excluded is True
+        assert "caixinhas" in moved.notes
+
+        added = by_description["Saldo adicionado"]
+        assert added.excluded is False
+        assert added.type == "credit"
+        assert added.amount == Decimal("596.00")
+
+    def test_excludes_both_legs_of_a_same_day_reversal(self):
+        """A charge and its equal, opposite twin cancel out, so neither counts."""
+        reversal = [t for t in parse_noh_csv(NOH_CSV) if t.description.startswith("SUPERMERCADO X")]
+
+        assert len(reversal) == 2
+        assert all(t.excluded for t in reversal)
+        assert all("estorno" in t.notes for t in reversal)
+
+    def test_identical_rows_keep_distinct_stable_ids(self):
+        """Two real charges of the same amount on one day must both survive.
+
+        The generic field-based duplicate check would collapse them, which is
+        why every row carries a synthetic external_id with an occurrence
+        counter — and why that id has to come out the same on every parse.
+        """
+        repeated = [t for t in parse_noh_csv(NOH_CSV) if t.description.startswith("CANTINA ABC")]
+
+        assert len(repeated) == 2
+        assert not any(t.excluded for t in repeated)
+        assert repeated[0].external_id != repeated[1].external_id
+        assert [t.external_id for t in repeated] == [
+            t.external_id for t in parse_noh_csv(NOH_CSV)
+            if t.description.startswith("CANTINA ABC")
+        ]
+
+    def test_parses_amount_date_and_initiator(self):
+        """DD/MM/YYYY, "-R$ 1.234,56", and who spent it kept as a note."""
+        charge = parse_noh_csv(NOH_CSV)[0]
+
+        assert charge.description == "MERCADO CENTRAL SP BR"
+        assert charge.amount == Decimal("1234.56")
+        assert charge.date == date(2026, 10, 28)
+        assert charge.type == "debit"
+        assert charge.notes == "Ana · Cartão"
+        assert charge.excluded is False
+
+    @pytest.mark.asyncio
+    async def test_reimporting_the_same_export_adds_nothing(
+        self, session: AsyncSession, test_user: User, test_workspace, test_account: Account,
+    ):
+        """The whole point: overlapping exports get re-sent, nothing duplicates."""
+        first_imported, _, excluded, _ = await import_transactions(
+            session, test_workspace.id, test_user.id, test_account.id,
+            parse_noh_csv(NOH_CSV), "import", detected_format="noh",
+        )
+        assert (first_imported, excluded) == (4, 3)
+
+        second_imported, skipped, _, _ = await import_transactions(
+            session, test_workspace.id, test_user.id, test_account.id,
+            parse_noh_csv(NOH_CSV), "import", detected_format="noh",
+        )
+        assert second_imported == 0
+        assert skipped == 4
+
+
+# A C6 export, trimmed: the eight-line heading, a padded title, the invoice
+# reference that only lives in Descrição, a row that settles two days later,
+# and two same-day rows that are not a reversal (money in, money straight out).
+C6_CSV = (
+    'EXTRATO DE CONTA CORRENTE C6 BANK\n'
+    '\n'
+    'Agência: 9 / Conta: 000000000\n'
+    'Extrato gerado em 29/10/2026 - as 11:01:34\n'
+    '\n'
+    'Extrato de 29/10/2025 a 29/10/2026\n'
+    '\n'
+    '\n'
+    'Data Lançamento,Data Contábil,Título,Descrição,Entrada(R$),Saída(R$),Saldo do Dia(R$)\n'
+    '06/01/2026,06/01/2026,Pix recebido de EMPRESA ALFA LTDA,Pix recebido de EMPRESA ALFA LTDA,15000.00,0.00,15000.00\n'
+    '09/01/2026,09/01/2026,Pix recebido de CLIENTE BETA LTDA,NF-1,22000.00,0.00,37000.00\n'
+    '09/05/2026,11/05/2026,"Pix enviado para SOCIO EXEMPLO       ",TRANSF ENVIADA PIX,0.00,24000.00,13000.00\n'
+    '03/09/2026,03/09/2026,Pix recebido de CLIENTE GAMA LTDA,Pix recebido de CLIENTE GAMA LTDA,15000.00,0.00,13000.00\n'
+    '03/09/2026,03/09/2026,Pix enviado para Socio Exemplo,TRANSF ENVIADA PIX,0.00,15000.00,13000.00\n'
+    '\n'
+).encode("utf-8")
+
+
+class TestParseC6Csv:
+    """Tests for the C6 Bank statement export."""
+
+    def test_is_c6_csv(self):
+        """Found by its header, eight heading lines down."""
+        assert is_c6_csv(C6_CSV) is True
+        assert is_c6_csv(b"data,descricao,valor\n10/02/2026,UBER,-25.50\n") is False
+        assert is_c6_csv(NOH_CSV) is False
+
+    def test_rows_sum_to_the_statements_own_closing_balance(self):
+        """The strongest check the file offers: Saldo do Dia is not imported,
+        but the imported rows have to add up to it."""
+        transactions = parse_c6_csv(C6_CSV)
+
+        net = sum(
+            t.amount if t.type == "credit" else -t.amount for t in transactions
+        )
+        assert net == Decimal("13000.00")  # Saldo do Dia of the last row
+        assert len(transactions) == 5
+
+    def test_split_columns_padding_and_invoice_reference(self):
+        """Entrada/Saída pick the sign, the title is trimmed, NF-1 is kept."""
+        by_date = {t.date: t for t in parse_c6_csv(C6_CSV)}
+
+        invoice = by_date[date(2026, 1, 9)]
+        assert invoice.type == "credit"
+        assert invoice.amount == Decimal("22000.00")
+        assert invoice.notes == "NF-1"
+
+        padded = by_date[date(2026, 5, 9)]
+        assert padded.description == "Pix enviado para SOCIO EXEMPLO"
+        assert padded.type == "debit"
+        assert padded.notes == "TRANSF ENVIADA PIX · compensado em 11/05/2026"
+
+    def test_same_day_opposite_amounts_are_both_kept(self):
+        """Revenue in and pró-labore out on one day is not a reversal pair.
+
+        Noh posts both legs of a cancelled card charge and those cancel; C6
+        does not, so netting them here would erase R$ 15.000 of real revenue
+        and R$ 15.000 of real spending.
+        """
+        third = [t for t in parse_c6_csv(C6_CSV) if t.date == date(2026, 9, 3)]
+
+        assert len(third) == 2
+        assert {t.type for t in third} == {"credit", "debit"}
+        assert not any(t.excluded for t in third)
+
+
+# A BS2 export, trimmed: the ten-line heading, the BOM it writes before
+# arbitrary rows, the opening balance row (written a field short) and the
+# closing one (full arity, amount = the balance), and the footer sentence.
+BS2_CSV = (
+    '\ufeffExtrato Bancário - Empresas\n'
+    'Banco BS2 S.A.; 218; Agência;0001; Conta; 1234567\n'
+    'Extrato Bancário - Empresas\n'
+    'Filtros selecionados\n'
+    'Período; 31/07/2026 - 29/10/2026\n'
+    'Saldo Atual; R$ 8.446,05\n'
+    'Bloqueado Judicial; R$ 0,00\n'
+    'Bloqueado Transacional; R$ 0,00\n'
+    '\n'
+    '\n'
+    'DataContabil;Data Operação; Tipo; Detalhe;Banco;Agencia;Conta;Identificador da transação; Identificador da movimentação; Valor; Observação\n'
+    '31/07/2026 00:00;Saldo;Saldo Inicial;;;;;;R$ 180,98;\n'
+    '\ufeff20/10/2026;20/10/2026 13:38;PGTO CONCESS/TRIBUTO;PGTO CONCES.PUB.INT.BANK. - DAS-SIMPLES NACIONAL;0;0;0;6933955a-bd15;2180001000123456720261020500001;R$ -1.024,51;PGTO_CONCESSIONARIA\n'
+    '02/10/2026;02/10/2026 11:15;RECEBIMENTO TED;TED C RECEBIDA - 00000000000191 - CLIENTE DELTA LTDA;237;105;2094800;20261002100551658745;2180001000123456720261002500002;R$ 5.200,00;\n'
+    '03/09/2026;03/09/2026 15:31;PIX ENVIADO;Débito PIX - 00000000000 - Socio Exemplo;301;1;29984;E71027866202609031830;2180001000123456720260903500004;R$ -11.000,00;Débito pagamento PIX\n'
+    '\ufeff20/10/2026;20/10/2026 00:00;Saldo;Saldo Final;;;;;;R$ 8.446,05;\n'
+    '\n'
+    'Os dados acima têm como base 29/10/2026 11:08:11 e estão sujeitos a alterações.\n'
+).encode("utf-8")
+
+
+class TestParseBs2Csv:
+    """Tests for the Banco BS2 business statement export."""
+
+    def test_is_bs2_csv(self):
+        """Semicolon-separated header, ten heading lines down."""
+        assert is_bs2_csv(BS2_CSV) is True
+        assert is_bs2_csv(C6_CSV) is False
+        assert is_bs2_csv(NOH_CSV) is False
+
+    def test_drops_balance_rows_and_footer(self):
+        """Three real rows; the two Saldo rows and the footer are not money.
+
+        The closing balance row is the dangerous one: full arity, and its
+        amount is the account balance, so importing it books R$ 8.446,05 as a
+        credit.
+        """
+        transactions = parse_bs2_csv(BS2_CSV)
+
+        assert len(transactions) == 3
+        assert not any("Saldo" in t.description for t in transactions)
+        # The balance itself must not show up as money that moved.
+        assert Decimal("8446.05") not in {t.amount for t in transactions}
+        assert Decimal("180.98") not in {t.amount for t in transactions}
+        net = sum(
+            t.amount if t.type == "credit" else -t.amount for t in transactions
+        )
+        assert net == Decimal("-6824.51")
+
+    def test_uses_the_banks_own_movement_id(self):
+        """BS2 numbers its rows, so no synthetic external_id is needed."""
+        transactions = parse_bs2_csv(BS2_CSV)
+
+        ids = [t.external_id for t in transactions]
+        assert ids == [
+            "2180001000123456720261020500001",
+            "2180001000123456720261002500002",
+            "2180001000123456720260903500004",
+        ]
+
+    def test_mid_file_bom_does_not_break_the_date(self):
+        """BS2 writes a BOM before arbitrary rows, not just the first."""
+        transactions = parse_bs2_csv(BS2_CSV)
+
+        assert transactions[0].date == date(2026, 10, 20)
+        assert transactions[0].amount == Decimal("1024.51")
+        assert transactions[0].notes == "PGTO CONCESS/TRIBUTO · PGTO_CONCESSIONARIA"
+
+    def test_description_keeps_counterparty_and_document(self):
+        transactions = parse_bs2_csv(BS2_CSV)
+
+        ted = transactions[1]
+        assert ted.description == "TED C RECEBIDA - 00000000000191 - CLIENTE DELTA LTDA"
+        assert ted.type == "credit"
+        assert ted.amount == Decimal("5200.00")

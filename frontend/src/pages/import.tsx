@@ -43,7 +43,7 @@ function toReviewTransactions(txns: ImportPreviewTransaction[]): ImportReviewTra
   return txns.map((tx, i) => ({
     ...tx,
     _id: tx.external_id ? `${tx.external_id}-${i}` : `idx-${i}`,
-    excluded: false,
+    excluded: tx.excluded ?? false,
     selected_category_id: undefined,
   }))
 }
@@ -273,7 +273,10 @@ export default function ImportPage() {
     ))
   }, [])
 
-  const isCsvFile = fileName?.toLowerCase().endsWith('.csv') ?? false
+  // Bank exports with a fixed layout: .csv by name, but none of the CSV
+  // options apply and the parser ignores every one of them.
+  const isFixedLayoutCsv = previewData?.detected_format === 'noh' || previewData?.detected_format === 'c6'
+  const isCsvFile = (fileName?.toLowerCase().endsWith('.csv') ?? false) && !isFixedLayoutCsv
   // QIF dates are ambiguous for days 1-12 (DD/MM vs MM/DD), so the file
   // options panel is shown for QIF too, limited to the date-format selector.
   const isQifFile = fileName?.toLowerCase().endsWith('.qif') ?? false
