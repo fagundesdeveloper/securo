@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { ShellLogo } from '@/components/shell-logo'
+import { BrandLogo } from '@/components/brand-logo'
 
 // Left-hand brand panel for the auth/onboarding screens. A deep indigo→violet
 // field with a slow purple aurora drifting behind an oversized, translucent
@@ -29,7 +29,7 @@ export function AuthBrandPanel() {
         className="pointer-events-none absolute -right-28 -bottom-24 text-white/[0.06]"
         style={{ transform: 'rotate(-8deg)' }}
       >
-        <ShellLogo size={640} />
+        <BrandLogo size={640} />
       </div>
 
       {/* Depth: gentle vignette toward the edges */}
@@ -45,9 +45,9 @@ export function AuthBrandPanel() {
       {/* Wordmark */}
       <div className="relative flex items-center gap-2.5">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/15">
-          <ShellLogo size={20} className="text-white" />
+          <BrandLogo size={28} />
         </div>
-        <span className="text-lg font-semibold tracking-tight">Securo</span>
+        <span className="text-lg font-semibold tracking-tight">{t('app.name')}</span>
       </div>
 
       {/* Tagline */}

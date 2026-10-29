@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { CurrencySelect } from '@/components/currency-select'
-import { ShellLogo } from '@/components/shell-logo'
+import { BrandLogo } from '@/components/brand-logo'
 import { setThemeBasedOnSystem } from '@/lib/theme-utils'
 import { isServerUnreachable } from '@/lib/auth-errors'
 import type { AxiosError } from 'axios'
@@ -78,7 +78,7 @@ export default function RegisterPage() {
         <form onSubmit={handleSubmit}>
           <div className="flex flex-col items-center pt-8 pb-2 px-8">
             <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
-              <ShellLogo size={22} className="text-primary" />
+              <BrandLogo size={32} />
             </div>
             <h1 className="text-xl font-semibold tracking-tight">{t('auth.register')}</h1>
             <p className="text-sm text-muted-foreground mt-1">{t('auth.registerDescription')}</p>

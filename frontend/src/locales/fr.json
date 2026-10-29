@@ -60,7 +60,7 @@
     "archiveConfirmDescription": "L'espace de travail « {{name}} » sera retiré de votre liste. Les données sont conservées et un administrateur pourra le restaurer ultérieurement."
   },
   "app": {
-    "name": "Securo",
+    "name": "Fagundes Bank",
     "versionAriaLabel": "Version en cours d'exécution {{version}}",
     "versionLabel": "Version {{version}}",
     "updateAvailable": "Mise à jour disponible",
@@ -125,7 +125,8 @@
     "groupAdmin": "Administration",
     "groupAgents": "IA",
     "agents": "Agents",
-    "aiAgents": "Agents IA"
+    "aiAgents": "Agents IA",
+    "insights": "Insights"
   },
   "invoices": {
     "title": "Factures",
@@ -210,9 +211,9 @@
     "passkeysDescription": "Utilisez des clés de sécurité ou les clés d'accès de vos appareils pour vous connecter sans saisir votre mot de passe. Les clés d'accès enregistrées protègent également la connexion par mot de passe comme second facteur ; la connexion par clé d'accès seule ignore l'étape du code d'authentification, car la clé vérifie déjà la possession.",
     "passkeyLoadError": "Impossible de charger les clés d'accès",
     "passkeyUnsupported": "Ce navigateur ne prend pas en charge les clés d'accès.",
-    "passkeyInsecureContext": "Les clés d'accès nécessitent une connexion sécurisée. Ouvrez Securo en HTTPS, ou sur http://localhost.",
-    "passkeyIpAddress": "Les clés d'accès ne fonctionnent pas sur une adresse IP. Ouvrez Securo sur un nom de domaine en HTTPS, ou sur http://localhost.",
-    "passkeyDomainError": "Votre navigateur a rejeté ce domaine pour les clés d'accès. Ouvrez Securo sur le domaine pour lequel il est configuré, en HTTPS.",
+    "passkeyInsecureContext": "Les clés d'accès nécessitent une connexion sécurisée. Ouvrez Fagundes Bank en HTTPS, ou sur http://localhost.",
+    "passkeyIpAddress": "Les clés d'accès ne fonctionnent pas sur une adresse IP. Ouvrez Fagundes Bank sur un nom de domaine en HTTPS, ou sur http://localhost.",
+    "passkeyDomainError": "Votre navigateur a rejeté ce domaine pour les clés d'accès. Ouvrez Fagundes Bank sur le domaine pour lequel il est configuré, en HTTPS.",
     "passkeyDomainMismatch": "Cette adresse est en dehors du domaine de clé d'accès configuré sur le serveur (WEBAUTHN_RP_ID).",
     "passkeyDuplicate": "Cet appareil possède déjà une clé d'accès pour votre compte.",
     "passkeyWaiting": "En attente de votre appareil...",
@@ -665,7 +666,7 @@
       "openBridge": "Générer un jeton sur SimpleFIN Bridge",
       "tokenLabel": "Jeton de configuration",
       "tokenPlaceholder": "Collez le jeton que vous avez reçu…",
-      "tokenHelp": "Le jeton de configuration est à usage unique. Securo en extrait une URL d'accès privée qu'il stocke chiffrée.",
+      "tokenHelp": "Le jeton de configuration est à usage unique. Fagundes Bank en extrait une URL d'accès privée qu'il stocke chiffrée.",
       "connect": "Connecter",
       "connecting": "Connexion…",
       "simplefin": {
@@ -704,7 +705,7 @@
     "syncAssets": "Importer les actifs d'investissement",
     "syncAssetsHint": "Lorsqu'il est désactivé, cette connexion synchronise les comptes et transactions mais ne touche pas aux positions d'investissement du fournisseur.",
     "initialSyncSettings": "Options de synchronisation",
-    "initialSyncSettingsDesc": "Choisissez ce que Securo doit importer avant d'ouvrir le connecteur.",
+    "initialSyncSettingsDesc": "Choisissez ce que Fagundes Bank doit importer avant d'ouvrir le connecteur.",
     "continueToConnector": "Continuer vers le connecteur"
   },
   "settings": {
@@ -971,9 +972,9 @@
     "outflowColumn": "Colonne des sorties",
     "selectColumn": "Sélectionner une colonne...",
     "columnMapping": "Correspondance des colonnes",
-    "columnMappingHint": "Faites correspondre vos colonnes CSV aux champs de Securo. Laissez sur détection automatique pour conserver la colonne détectée.",
+    "columnMappingHint": "Faites correspondre vos colonnes CSV aux champs de Fagundes Bank. Laissez sur détection automatique pour conserver la colonne détectée.",
     "columnAutoDetect": "Détection automatique",
-    "mappingNeeded": "Nous n'avons pas pu reconnaître automatiquement vos colonnes CSV. Faites-les correspondre aux champs de Securo ci-dessous pour continuer.",
+    "mappingNeeded": "Nous n'avons pas pu reconnaître automatiquement vos colonnes CSV. Faites-les correspondre aux champs de Fagundes Bank ci-dessous pour continuer.",
     "mapDate": "Colonne de date",
     "mapDescription": "Colonne de description",
     "mapAmount": "Colonne de montant",
@@ -1401,11 +1402,11 @@
     "you": "vous",
     "memberName": "Nom",
     "memberEmail": "E-mail",
-    "memberEmailHint": "Optionnel — utile si vous l'invitez plus tard comme utilisateur Securo.",
-    "linkedUser": "Utilisateur Securo lié",
+    "memberEmailHint": "Optionnel — utile si vous l'invitez plus tard comme utilisateur Fagundes Bank.",
+    "linkedUser": "Utilisateur Fagundes Bank lié",
     "linkedUserNone": "— Non lié (non-utilisateur) —",
-    "linkedUserHint": "Choisissez un utilisateur Securo existant pour lier le membre, ou laissez non lié pour ajouter un non-utilisateur (ex. une personne qui n'a pas encore de compte).",
-    "willLinkToUser": "Sera lié à l'utilisateur Securo existant {{email}}",
+    "linkedUserHint": "Choisissez un utilisateur Fagundes Bank existant pour lier le membre, ou laissez non lié pour ajouter un non-utilisateur (ex. une personne qui n'a pas encore de compte).",
+    "willLinkToUser": "Sera lié à l'utilisateur Fagundes Bank existant {{email}}",
     "sharedWithYou": "Partagé avec vous",
     "sharedRowBadge": "Partagé · {{group}}",
     "sharedRowBadgeAuthor": "{{author}} · {{group}}",
@@ -1486,7 +1487,7 @@
     "show": "Afficher les valeurs"
   },
   "setup": {
-    "title": "Bienvenue sur Securo",
+    "title": "Bienvenue sur Fagundes Bank",
     "description": "Créez votre compte administrateur pour commencer.",
     "confirmPassword": "Confirmer le mot de passe",
     "createAdmin": "Créer le compte administrateur",
@@ -1514,7 +1515,7 @@
     "title": "Mise à jour du serveur",
     "runningLabel": "en cours d'exécution",
     "newVersionAvailable": "Nouvelle version disponible :",
-    "description": "Une nouvelle version de Securo est disponible. Envisagez une mise à jour si vous :",
+    "description": "Une nouvelle version de Fagundes Bank est disponible. Envisagez une mise à jour si vous :",
     "reasonFeatures": "Souhaitez accéder aux dernières fonctionnalités et améliorations",
     "reasonBugs": "Rencontrez des problèmes qui pourraient être résolus dans la nouvelle version",
     "releaseNotesHintBefore": "Nous recommandons de consulter les",
@@ -1614,7 +1615,7 @@
   },
   "agents": {
     "title": "Agents",
-    "subtitle": "Créez des assistants conversationnels par-dessus vos données Securo. Chaque agent peut avoir sa propre base de connaissances, ses outils et son fournisseur.",
+    "subtitle": "Créez des assistants conversationnels par-dessus vos données Fagundes Bank. Chaque agent peut avoir sa propre base de connaissances, ses outils et son fournisseur.",
     "newAgent": "Nouvel agent",
     "newConversation": "Nouvelle conversation",
     "conversationsCount": "Conversations",
@@ -1733,7 +1734,16 @@
       "loading": "Chargement des outils…"
     },
     "chat": {
-      "placeholder": "Discuter avec {{name}}..."
+      "placeholder": "Discuter avec {{name}}...",
+      "modelDefault": "modèle : par défaut",
+      "modelHint": "Modèle du prochain message",
+      "reasoningHint": "Combien le modèle peut réfléchir avant de répondre",
+      "reasoning": {
+        "off": "sans réflexion",
+        "auto": "réflexion : auto",
+        "high": "réflexion : élevée",
+        "max": "réflexion : maximale"
+      }
     },
     "chart": {
       "noData": "Aucune donnée à représenter"
@@ -1781,14 +1791,14 @@
     },
     "mcpExternal": {
       "title": "Accès MCP externe",
-      "subtitle": "Branchez un agent externe (Claude Desktop, ChatGPT, n8n, un client personnalisé) au serveur MCP intégré de Securo. Le jeton ci-dessous est limité à votre utilisateur et expire dans {{days}} jours.",
+      "subtitle": "Branchez un agent externe (Claude Desktop, ChatGPT, n8n, un client personnalisé) au serveur MCP intégré de Fagundes Bank. Le jeton ci-dessous est limité à votre utilisateur et expire dans {{days}} jours.",
       "copy": "Copier",
       "copied": "Copié",
       "copyFailed": "Échec de la copie",
       "mint": "Générer un jeton",
       "minting": "Génération…",
       "mintFailed": "Impossible de générer le jeton",
-      "warning": "Copiez-le maintenant — Securo ne stocke pas le jeton, nous ne pourrons donc pas le réafficher. Révoquez-le en changeant AGENTS_MCP_JWT_SECRET.",
+      "warning": "Copiez-le maintenant — Fagundes Bank ne stocke pas le jeton, nous ne pourrons donc pas le réafficher. Révoquez-le en changeant AGENTS_MCP_JWT_SECRET.",
       "regenerate": "En générer un autre",
       "snippets": {
         "token": "Jeton",
@@ -1839,8 +1849,57 @@
       "optional": "optionnel",
       "empty": {
         "title": "Aucune connexion pour l'instant",
-        "subtitle": "Ajoutez une connexion pour pointer Securo vers votre Ollama local, OpenAI, Anthropic, ou tout point de terminaison compatible OpenAI."
+        "subtitle": "Ajoutez une connexion pour pointer Fagundes Bank vers votre Ollama local, OpenAI, Anthropic, ou tout point de terminaison compatible OpenAI."
       }
+    }
+  },
+  "insights": {
+    "title": "Insights",
+    "newAnalysis": "Nouvelle analyse",
+    "noAgent": "Les insights s'appuient sur l'un de vos agents, et vous n'en avez pas encore. Créez un agent avec une connexion de modèle puis revenez ici.",
+    "goToAgents": "Créer un agent",
+    "cards": {
+      "xray": {
+        "title": "Radiographie complète",
+        "description": "Ce qui est entré, ce qui est sorti, ce qui reste, votre taux d'épargne et les trois changements les plus décisifs."
+      },
+      "leaks": {
+        "title": "Où l'argent fuit",
+        "description": "Prélèvements récurrents, catégories au-dessus de leur propre moyenne et petites dépenses qui s'additionnent — chiffrés à l'année."
+      },
+      "goals": {
+        "title": "Mes objectifs tiennent-ils ?",
+        "description": "Chaque objectif face à ce qui est réellement resté, et ce qu'il faudrait changer par mois."
+      },
+      "plan": {
+        "title": "Plan pour le mois prochain",
+        "description": "Cinq actions au maximum, chacune avec ce qu'elle vaut, et le budget qui va avec."
+      }
+    },
+    "tabs": {
+      "analysis": "Analyse",
+      "plans": "Plans"
+    },
+    "plans": {
+      "new": "Nouveau plan",
+      "month": "Mois",
+      "body": "Le plan",
+      "bodyPlaceholder": "Ce que vous comptez faire de votre argent ce mois-ci. Assez précis pour pouvoir dire ensuite si vous l'avez fait.",
+      "save": "Enregistrer le plan",
+      "saved": "Plan enregistré",
+      "saveError": "Enregistrement impossible",
+      "duplicate": "Un plan existe déjà pour ce mois",
+      "empty": "Aucun plan pour l'instant. Écrivez-en un pour le mois prochain, l'agent le jugera une fois le mois clos.",
+      "reviewed": "Évalué",
+      "open": "En attente de la clôture du mois",
+      "verdict": "Verdict",
+      "verdictPlaceholder": "Collez ou écrivez le verdict sur ce mois.",
+      "askReview": "Demander à l'agent",
+      "writeReview": "L'écrire moi-même",
+      "saveReview": "Enregistrer le verdict",
+      "reviewSaved": "Verdict enregistré",
+      "clearReview": "Effacer le verdict",
+      "deleted": "Plan supprimé"
     }
   }
 }

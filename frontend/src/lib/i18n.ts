@@ -33,11 +33,14 @@ i18n
       de: { translation: de },
       fr: { translation: fr },
     },
-    fallbackLng: 'en',
-    // English is the default. Honour an explicit, persisted choice
-    // (querystring/localStorage/cookie) but do NOT auto-pick the browser
-    // language — otherwise a pt-BR/es-* browser would override the English
-    // default before the user ever chooses.
+    // This install is Brazilian: pt-BR is the default, and it is also the
+    // fallback, so a key missing from another locale shows Portuguese rather
+    // than dropping the reader into English mid-screen.
+    lng: 'pt-BR',
+    fallbackLng: 'pt-BR',
+    // An explicit, persisted choice still wins (querystring/localStorage/
+    // cookie); the browser language is deliberately not consulted, so a
+    // non-Portuguese browser does not override the default on its own.
     detection: {
       order: ['querystring', 'localStorage', 'cookie'],
       caches: ['localStorage'],

@@ -58,7 +58,7 @@ async def test_backup_with_data(
 
     # Verify Content-Disposition header contains filename
     disposition = response.headers.get("content-disposition", "")
-    assert "securo-backup-" in disposition
+    assert "fagundesbank-backup-" in disposition
     assert ".zip" in disposition
 
     buf = io.BytesIO(response.content)

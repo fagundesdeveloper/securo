@@ -60,7 +60,7 @@
     "archiveConfirmDescription": "El espacio de trabajo \"{{name}}\" se eliminará de tu lista. Los datos se conservan y un administrador puede restaurarlo más tarde."
   },
   "app": {
-    "name": "Securo",
+    "name": "Fagundes Bank",
     "versionAriaLabel": "Ejecutando la versión {{version}}",
     "versionLabel": "Versión {{version}}",
     "updateAvailable": "Actualización disponible",
@@ -125,7 +125,8 @@
     "groupAdmin": "Administración",
     "groupAgents": "IA",
     "agents": "Agentes",
-    "aiAgents": "Agentes IA"
+    "aiAgents": "Agentes IA",
+    "insights": "Insights"
   },
   "invoices": {
     "title": "Facturas",
@@ -210,9 +211,9 @@
     "passkeysDescription": "Usa llaves de seguridad o llaves de acceso del dispositivo para iniciar sesión sin introducir la contraseña. Las llaves registradas también protegen el inicio con contraseña como segundo factor; el inicio solo con llave omite el código autenticador porque la llave ya verifica la posesión.",
     "passkeyLoadError": "No se pudieron cargar las llaves de acceso",
     "passkeyUnsupported": "Este navegador no admite passkeys.",
-    "passkeyInsecureContext": "Las passkeys requieren una conexión segura. Abre Securo por HTTPS o en http://localhost.",
-    "passkeyIpAddress": "Las passkeys no funcionan en una dirección IP. Abre Securo en un dominio por HTTPS o en http://localhost.",
-    "passkeyDomainError": "Tu navegador rechazó este dominio para passkeys. Abre Securo en el dominio configurado, por HTTPS.",
+    "passkeyInsecureContext": "Las passkeys requieren una conexión segura. Abre Fagundes Bank por HTTPS o en http://localhost.",
+    "passkeyIpAddress": "Las passkeys no funcionan en una dirección IP. Abre Fagundes Bank en un dominio por HTTPS o en http://localhost.",
+    "passkeyDomainError": "Tu navegador rechazó este dominio para passkeys. Abre Fagundes Bank en el dominio configurado, por HTTPS.",
     "passkeyDomainMismatch": "Esta dirección está fuera del dominio de passkeys configurado en el servidor (WEBAUTHN_RP_ID).",
     "passkeyDuplicate": "Este dispositivo ya tiene una passkey para tu cuenta.",
     "passkeyWaiting": "Esperando a tu dispositivo...",
@@ -665,7 +666,7 @@
       "openBridge": "Generar token en SimpleFIN Bridge",
       "tokenLabel": "Token de configuración",
       "tokenPlaceholder": "Pega el token que recibiste…",
-      "tokenHelp": "El token de configuración es de un solo uso. Securo reclama una URL de acceso privada a partir de él y la almacena cifrada.",
+      "tokenHelp": "El token de configuración es de un solo uso. Fagundes Bank reclama una URL de acceso privada a partir de él y la almacena cifrada.",
       "connect": "Conectar",
       "connecting": "Conectando…",
       "simplefin": {
@@ -704,7 +705,7 @@
     "syncAssets": "Importar activos de inversión",
     "syncAssetsHint": "Cuando está desactivado, esta conexión sincroniza cuentas y transacciones, pero deja intactas las inversiones del proveedor.",
     "initialSyncSettings": "Opciones de sincronización",
-    "initialSyncSettingsDesc": "Elige qué debe importar Securo antes de abrir el conector.",
+    "initialSyncSettingsDesc": "Elige qué debe importar Fagundes Bank antes de abrir el conector.",
     "continueToConnector": "Continuar al conector"
   },
   "settings": {
@@ -971,9 +972,9 @@
     "outflowColumn": "Columna de salida",
     "selectColumn": "Seleccionar columna...",
     "columnMapping": "Asignación de columnas",
-    "columnMappingHint": "Asigna las columnas de tu CSV a los campos de Securo. Deja la detección automática para conservar la columna detectada.",
+    "columnMappingHint": "Asigna las columnas de tu CSV a los campos de Fagundes Bank. Deja la detección automática para conservar la columna detectada.",
     "columnAutoDetect": "Detección automática",
-    "mappingNeeded": "No pudimos reconocer automáticamente las columnas de tu CSV. Asigna las columnas a los campos de Securo abajo para continuar.",
+    "mappingNeeded": "No pudimos reconocer automáticamente las columnas de tu CSV. Asigna las columnas a los campos de Fagundes Bank abajo para continuar.",
     "mapDate": "Columna de fecha",
     "mapDescription": "Columna de descripción",
     "mapAmount": "Columna de importe",
@@ -1401,11 +1402,11 @@
     "you": "tú",
     "memberName": "Nombre",
     "memberEmail": "Correo electrónico",
-    "memberEmailHint": "Opcional — útil si luego lo invitas como usuario de Securo.",
-    "linkedUser": "Usuario de Securo vinculado",
+    "memberEmailHint": "Opcional — útil si luego lo invitas como usuario de Fagundes Bank.",
+    "linkedUser": "Usuario de Fagundes Bank vinculado",
     "linkedUserNone": "— No vinculado (no usuario) —",
-    "linkedUserHint": "Elige un usuario existente de Securo para vincular al miembro, o déjalo sin vincular para añadir un no usuario (por ejemplo, alguien que aún no tenga cuenta).",
-    "willLinkToUser": "Se vinculará al usuario existente de Securo {{email}}",
+    "linkedUserHint": "Elige un usuario existente de Fagundes Bank para vincular al miembro, o déjalo sin vincular para añadir un no usuario (por ejemplo, alguien que aún no tenga cuenta).",
+    "willLinkToUser": "Se vinculará al usuario existente de Fagundes Bank {{email}}",
     "sharedWithYou": "Compartido contigo",
     "sharedRowBadge": "Compartido · {{group}}",
     "sharedRowBadgeAuthor": "{{author}} · {{group}}",
@@ -1486,7 +1487,7 @@
     "show": "Mostrar valores"
   },
   "setup": {
-    "title": "Bienvenido a Securo",
+    "title": "Bienvenido a Fagundes Bank",
     "description": "Crea tu cuenta de administrador para comenzar.",
     "confirmPassword": "Confirmar contraseña",
     "createAdmin": "Crear cuenta de administrador",
@@ -1514,7 +1515,7 @@
     "title": "Actualización del servidor",
     "runningLabel": "en ejecución",
     "newVersionAvailable": "Nueva versión disponible:",
-    "description": "Hay una nueva versión de Securo disponible. Considera actualizar si:",
+    "description": "Hay una nueva versión de Fagundes Bank disponible. Considera actualizar si:",
     "reasonFeatures": "Quieres acceder a las funciones y mejoras más recientes",
     "reasonBugs": "Estás experimentando problemas que podrían resolverse en la nueva versión",
     "releaseNotesHintBefore": "Recomendamos revisar las",
@@ -1614,7 +1615,7 @@
   },
   "agents": {
     "title": "Agentes",
-    "subtitle": "Crea asistentes conversacionales sobre tus datos de Securo. Cada agente puede tener su propia base de conocimiento, herramientas y proveedor.",
+    "subtitle": "Crea asistentes conversacionales sobre tus datos de Fagundes Bank. Cada agente puede tener su propia base de conocimiento, herramientas y proveedor.",
     "newAgent": "Nuevo agente",
     "loading": "Cargando…",
     "instanceDefault": "predeterminado de la instancia",
@@ -1718,7 +1719,16 @@
       "loading": "Cargando herramientas…"
     },
     "chat": {
-      "placeholder": "Habla con {{name}}..."
+      "placeholder": "Habla con {{name}}...",
+      "modelDefault": "modelo: por defecto",
+      "modelHint": "Modelo del próximo mensaje",
+      "reasoningHint": "Cuánto puede pensar el modelo antes de responder",
+      "reasoning": {
+        "off": "sin pensar",
+        "auto": "pensar: automático",
+        "high": "pensar: alto",
+        "max": "pensar: máximo"
+      }
     },
     "chart": {
       "noData": "No hay datos para graficar"
@@ -1802,7 +1812,7 @@
       "optional": "opcional",
       "empty": {
         "title": "Aún no hay conexiones",
-        "subtitle": "Añade una conexión para apuntar Securo a tu Ollama local, OpenAI, Anthropic o cualquier endpoint compatible con OpenAI."
+        "subtitle": "Añade una conexión para apuntar Fagundes Bank a tu Ollama local, OpenAI, Anthropic o cualquier endpoint compatible con OpenAI."
       }
     },
     "newConversation": "Nueva conversación",
@@ -1822,14 +1832,14 @@
     },
     "mcpExternal": {
       "title": "Acceso MCP externo",
-      "subtitle": "Conecta un agente externo (Claude Desktop, ChatGPT, n8n, un cliente personalizado) al servidor MCP integrado de Securo. El token de abajo está limitado a tu usuario y caduca en {{days}} días.",
+      "subtitle": "Conecta un agente externo (Claude Desktop, ChatGPT, n8n, un cliente personalizado) al servidor MCP integrado de Fagundes Bank. El token de abajo está limitado a tu usuario y caduca en {{days}} días.",
       "copy": "Copiar",
       "copied": "Copiado",
       "copyFailed": "Error al copiar",
       "mint": "Generar token",
       "minting": "Generando…",
       "mintFailed": "No se pudo generar el token",
-      "warning": "Cópialo ahora: Securo no almacena el token, así que no podremos volver a mostrarlo. Revócalo rotando AGENTS_MCP_JWT_SECRET.",
+      "warning": "Cópialo ahora: Fagundes Bank no almacena el token, así que no podremos volver a mostrarlo. Revócalo rotando AGENTS_MCP_JWT_SECRET.",
       "regenerate": "Generar otro",
       "snippets": {
         "token": "Token",
@@ -1841,6 +1851,55 @@
         "claude": "Claude Desktop / Code / Cursor",
         "openai": "OpenAI Responses API"
       }
+    }
+  },
+  "insights": {
+    "title": "Insights",
+    "newAnalysis": "Nuevo análisis",
+    "noAgent": "Los insights funcionan sobre uno de tus agentes, y todavía no tienes ninguno. Crea un agente con una conexión de modelo y vuelve aquí.",
+    "goToAgents": "Crear un agente",
+    "cards": {
+      "xray": {
+        "title": "Radiografía completa",
+        "description": "Cuánto entró, cuánto salió, cuánto sobró, tu tasa de ahorro y los tres cambios de mayor impacto."
+      },
+      "leaks": {
+        "title": "Dónde se fuga el dinero",
+        "description": "Cargos recurrentes, categorías por encima de su propia media y gastos pequeños que suman — calculados al año."
+      },
+      "goals": {
+        "title": "¿Caben mis metas?",
+        "description": "Cada meta frente a lo que realmente sobró, y cuánto tendría que cambiar al mes para cumplirse a tiempo."
+      },
+      "plan": {
+        "title": "Plan para el mes que viene",
+        "description": "Como mucho cinco acciones, cada una con lo que vale en dinero, y el presupuesto correspondiente."
+      }
+    },
+    "tabs": {
+      "analysis": "Análisis",
+      "plans": "Planes"
+    },
+    "plans": {
+      "new": "Nuevo plan",
+      "month": "Mes",
+      "body": "El plan",
+      "bodyPlaceholder": "Lo que piensas hacer con tu dinero este mes. Lo bastante concreto para saber después si lo cumpliste.",
+      "save": "Guardar plan",
+      "saved": "Plan guardado",
+      "saveError": "No se pudo guardar",
+      "duplicate": "Ya hay un plan para ese mes",
+      "empty": "Aún no hay planes. Escribe uno para el mes que viene y el agente lo juzgará al cerrar el mes.",
+      "reviewed": "Evaluado",
+      "open": "Esperando a que cierre el mes",
+      "verdict": "Veredicto",
+      "verdictPlaceholder": "Pega o escribe el veredicto sobre este mes.",
+      "askReview": "Pedir al agente",
+      "writeReview": "Escribirlo yo",
+      "saveReview": "Guardar veredicto",
+      "reviewSaved": "Veredicto guardado",
+      "clearReview": "Borrar veredicto",
+      "deleted": "Plan eliminado"
     }
   }
 }

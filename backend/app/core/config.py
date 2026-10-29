@@ -14,7 +14,7 @@ CREDENTIALS_DIRECTORY: list[Path] = [
 
 class Settings(BaseSettings):
     # App
-    app_name: str = "Securo"
+    app_name: str = "Fagundes Bank"
     debug: bool = False
 
     # Database

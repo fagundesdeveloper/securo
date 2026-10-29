@@ -60,7 +60,7 @@
     "archiveConfirmDescription": "The workspace \"{{name}}\" will be removed from your list. Data is preserved and an admin can restore it later."
   },
   "app": {
-    "name": "Securo",
+    "name": "Fagundes Bank",
     "versionAriaLabel": "Running version {{version}}",
     "versionLabel": "Version {{version}}",
     "updateAvailable": "Update Available",
@@ -125,7 +125,8 @@
     "groupAdmin": "Administration",
     "groupAgents": "AI",
     "agents": "Agents",
-    "aiAgents": "AI Agents"
+    "aiAgents": "AI Agents",
+    "insights": "Insights"
   },
   "invoices": {
     "title": "Invoices",
@@ -210,9 +211,9 @@
     "passkeysDescription": "Use security keys or device passkeys to sign in without entering your password. Enrolled passkeys also protect password sign-in as a second factor; passkey-only sign-in skips the authenticator-code step because the key already verifies possession.",
     "passkeyLoadError": "Could not load passkeys",
     "passkeyUnsupported": "This browser does not support passkeys.",
-    "passkeyInsecureContext": "Passkeys need a secure connection. Open Securo over HTTPS, or on http://localhost.",
-    "passkeyIpAddress": "Passkeys do not work on an IP address. Open Securo on a domain name over HTTPS, or on http://localhost.",
-    "passkeyDomainError": "Your browser rejected this domain for passkeys. Open Securo on the domain it is configured for, over HTTPS.",
+    "passkeyInsecureContext": "Passkeys need a secure connection. Open Fagundes Bank over HTTPS, or on http://localhost.",
+    "passkeyIpAddress": "Passkeys do not work on an IP address. Open Fagundes Bank on a domain name over HTTPS, or on http://localhost.",
+    "passkeyDomainError": "Your browser rejected this domain for passkeys. Open Fagundes Bank on the domain it is configured for, over HTTPS.",
     "passkeyDomainMismatch": "This address is outside the passkey domain configured on the server (WEBAUTHN_RP_ID).",
     "passkeyDuplicate": "This device already has a passkey for your account.",
     "passkeyWaiting": "Waiting for your device...",
@@ -665,7 +666,7 @@
       "openBridge": "Generate token at SimpleFIN Bridge",
       "tokenLabel": "Setup token",
       "tokenPlaceholder": "Paste the token you received…",
-      "tokenHelp": "The setup token is single-use. Securo claims a private access URL from it and stores it encrypted.",
+      "tokenHelp": "The setup token is single-use. Fagundes Bank claims a private access URL from it and stores it encrypted.",
       "connect": "Connect",
       "connecting": "Connecting…",
       "simplefin": {
@@ -704,7 +705,7 @@
     "syncAssets": "Import investment assets",
     "syncAssetsHint": "When disabled, this connection syncs accounts and transactions but leaves provider investment holdings untouched.",
     "initialSyncSettings": "Sync options",
-    "initialSyncSettingsDesc": "Choose what Securo should import before opening the connector.",
+    "initialSyncSettingsDesc": "Choose what Fagundes Bank should import before opening the connector.",
     "continueToConnector": "Continue to connector"
   },
   "settings": {
@@ -971,9 +972,9 @@
     "outflowColumn": "Outflow column",
     "selectColumn": "Select column...",
     "columnMapping": "Column mapping",
-    "columnMappingHint": "Map your CSV columns to Securo fields. Leave on auto-detect to keep the detected column.",
+    "columnMappingHint": "Map your CSV columns to Fagundes Bank fields. Leave on auto-detect to keep the detected column.",
     "columnAutoDetect": "Auto-detect",
-    "mappingNeeded": "We couldn't recognize your CSV columns automatically. Map them to Securo fields below to continue.",
+    "mappingNeeded": "We couldn't recognize your CSV columns automatically. Map them to Fagundes Bank fields below to continue.",
     "mapDate": "Date column",
     "mapDescription": "Description column",
     "mapAmount": "Amount column",
@@ -1401,11 +1402,11 @@
     "you": "you",
     "memberName": "Name",
     "memberEmail": "Email",
-    "memberEmailHint": "Optional — useful if you invite them as a Securo user later.",
-    "linkedUser": "Linked Securo user",
+    "memberEmailHint": "Optional — useful if you invite them as a Fagundes Bank user later.",
+    "linkedUser": "Linked Fagundes Bank user",
     "linkedUserNone": "— Not linked (non-user) —",
-    "linkedUserHint": "Pick an existing Securo user to link the member, or leave unlinked to add a non-user (e.g. someone who doesn't have an account yet).",
-    "willLinkToUser": "Will link to existing Securo user {{email}}",
+    "linkedUserHint": "Pick an existing Fagundes Bank user to link the member, or leave unlinked to add a non-user (e.g. someone who doesn't have an account yet).",
+    "willLinkToUser": "Will link to existing Fagundes Bank user {{email}}",
     "sharedWithYou": "Shared with you",
     "sharedRowBadge": "Shared · {{group}}",
     "sharedRowBadgeAuthor": "{{author}} · {{group}}",
@@ -1486,7 +1487,7 @@
     "show": "Show values"
   },
   "setup": {
-    "title": "Welcome to Securo",
+    "title": "Welcome to Fagundes Bank",
     "description": "Create your admin account to get started.",
     "confirmPassword": "Confirm password",
     "createAdmin": "Create Admin Account",
@@ -1514,7 +1515,7 @@
     "title": "Server update",
     "runningLabel": "running",
     "newVersionAvailable": "New version available:",
-    "description": "A new version of Securo is available. Consider updating if you:",
+    "description": "A new version of Fagundes Bank is available. Consider updating if you:",
     "reasonFeatures": "Want to access the latest features and improvements",
     "reasonBugs": "Are experiencing issues that may be resolved in the new version",
     "releaseNotesHintBefore": "We recommend reviewing the",
@@ -1614,7 +1615,7 @@
   },
   "agents": {
     "title": "Agents",
-    "subtitle": "Build conversational assistants on top of your Securo data. Each agent can have its own knowledge base, tools, and provider.",
+    "subtitle": "Build conversational assistants on top of your Fagundes Bank data. Each agent can have its own knowledge base, tools, and provider.",
     "newAgent": "New agent",
     "newConversation": "New conversation",
     "conversationsCount": "Conversations",
@@ -1733,7 +1734,16 @@
       "loading": "Loading tools…"
     },
     "chat": {
-      "placeholder": "Talk to {{name}}..."
+      "placeholder": "Talk to {{name}}...",
+      "modelDefault": "model: default",
+      "modelHint": "Model for the next message",
+      "reasoningHint": "How much the model may think before answering",
+      "reasoning": {
+        "off": "no thinking",
+        "auto": "thinking: auto",
+        "high": "thinking: high",
+        "max": "thinking: max"
+      }
     },
     "chart": {
       "noData": "No data to chart"
@@ -1781,14 +1791,14 @@
     },
     "mcpExternal": {
       "title": "External MCP access",
-      "subtitle": "Plug an external agent (Claude Desktop, ChatGPT, n8n, a custom client) into Securo's built-in MCP server. The token below is scoped to your user and expires in {{days}} days.",
+      "subtitle": "Plug an external agent (Claude Desktop, ChatGPT, n8n, a custom client) into Fagundes Bank's built-in MCP server. The token below is scoped to your user and expires in {{days}} days.",
       "copy": "Copy",
       "copied": "Copied",
       "copyFailed": "Copy failed",
       "mint": "Generate token",
       "minting": "Generating…",
       "mintFailed": "Could not mint token",
-      "warning": "Copy now — Securo does not store the token, so we can't show it again. Revoke by rotating AGENTS_MCP_JWT_SECRET.",
+      "warning": "Copy now — Fagundes Bank does not store the token, so we can't show it again. Revoke by rotating AGENTS_MCP_JWT_SECRET.",
       "regenerate": "Generate another",
       "snippets": {
         "token": "Token",
@@ -1839,8 +1849,57 @@
       "optional": "optional",
       "empty": {
         "title": "No connections yet",
-        "subtitle": "Add a connection to point Securo at your local Ollama, OpenAI, Anthropic, or any OpenAI-compatible endpoint."
+        "subtitle": "Add a connection to point Fagundes Bank at your local Ollama, OpenAI, Anthropic, or any OpenAI-compatible endpoint."
       }
+    }
+  },
+  "insights": {
+    "title": "Insights",
+    "newAnalysis": "New analysis",
+    "noAgent": "Insights run on one of your agents, and you don't have one yet. Create an agent with a model connection and come back.",
+    "goToAgents": "Create an agent",
+    "cards": {
+      "xray": {
+        "title": "Full X-ray",
+        "description": "Income, spending, what is left, savings rate, and the three changes that would move the result most."
+      },
+      "leaks": {
+        "title": "Where the money leaks",
+        "description": "Recurring charges, categories above their own average, and small spending that adds up — priced per year."
+      },
+      "goals": {
+        "title": "Do my goals fit?",
+        "description": "Each goal against what actually came in, and how much per month would have to change for it to land on time."
+      },
+      "plan": {
+        "title": "Plan for next month",
+        "description": "At most five actions with what each one is worth in reais, and the budget to go with it."
+      }
+    },
+    "tabs": {
+      "analysis": "Analysis",
+      "plans": "Plans"
+    },
+    "plans": {
+      "new": "New plan",
+      "month": "Month",
+      "body": "The plan",
+      "bodyPlaceholder": "What you intend to do with your money this month. Be specific enough that you can tell later whether you did it.",
+      "save": "Save plan",
+      "saved": "Plan saved",
+      "saveError": "Could not save",
+      "duplicate": "There is already a plan for that month",
+      "empty": "No plans yet. Write one for next month and the agent will judge it once the month closes.",
+      "reviewed": "Reviewed",
+      "open": "Waiting for the month to close",
+      "verdict": "Verdict",
+      "verdictPlaceholder": "Paste or write the verdict on this month.",
+      "askReview": "Ask the agent",
+      "writeReview": "Write it myself",
+      "saveReview": "Save verdict",
+      "reviewSaved": "Verdict saved",
+      "clearReview": "Clear verdict",
+      "deleted": "Plan deleted"
     }
   }
 }

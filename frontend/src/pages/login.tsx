@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
-import { ShellLogo } from '@/components/shell-logo'
+import { BrandLogo } from '@/components/brand-logo'
 import type { AxiosError } from 'axios'
 import { isServerUnreachable } from '@/lib/auth-errors'
 import { useTheme } from 'next-themes'
@@ -188,7 +188,7 @@ export default function LoginPage() {
           <form onSubmit={handleVerify2fa}>
             <div className="flex flex-col items-center pt-8 pb-2 px-8">
               <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
-                <ShellLogo size={22} className="text-primary" />
+                <BrandLogo size={32} />
               </div>
               <h1 className="text-xl font-semibold tracking-tight">
                 {selected2faMethod === 'passkey' ? t('auth.passkeySecondFactorTitle') : t('auth.twoFactorTitle')}
@@ -286,7 +286,7 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit}>
           <div className="flex flex-col items-center pt-8 pb-2 px-8">
             <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
-              <ShellLogo size={22} className="text-primary" />
+              <BrandLogo size={32} />
             </div>
             <h1 className="text-xl font-semibold tracking-tight">{t('auth.login')}</h1>
             <p className="text-sm text-muted-foreground mt-1">{t('auth.loginDescription')}</p>

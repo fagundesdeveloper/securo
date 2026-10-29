@@ -105,5 +105,5 @@ async def backup(
     return StreamingResponse(
         iter([buf.getvalue()]),
         media_type="application/zip",
-        headers={"Content-Disposition": f'attachment; filename="securo-backup-{today}.zip"'},
+        headers={"Content-Disposition": f'attachment; filename="fagundesbank-backup-{today}.zip"'},
     )

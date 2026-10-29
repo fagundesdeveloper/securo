@@ -30,7 +30,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { APP_VERSION } from '@/lib/build-info'
-import { ShellLogo } from '@/components/shell-logo'
+import { BrandLogo } from '@/components/brand-logo'
 import { UpdateAvailableBanner } from '@/components/update-available-banner'
 import { UpdateAvailableDialog } from '@/components/update-available-dialog'
 import { WorkspaceSwitcher } from '@/components/workspace-switcher'
@@ -209,8 +209,11 @@ export function AppLayout() {
           aria-label={t('app.name')}
           title={t('nav.dashboard')}
         >
-          <ShellLogo size={22} className="text-primary shrink-0" />
-          <span className="font-bold text-sidebar-foreground">
+          <BrandLogo size={36} className="shrink-0" />
+          {/* nowrap: "Fagundes Bank" is two words and wrapped onto two lines
+              at sidebar width, which pushed the header taller than the row
+              of controls beside it. */}
+          <span className="font-semibold text-sm leading-tight tracking-tight text-sidebar-foreground whitespace-nowrap">
             {t('app.name')}
           </span>
         </Link>
@@ -297,20 +300,30 @@ export function AppLayout() {
           {/* Logo — clickable link to the dashboard. Replaces the
               dedicated 'Painel' nav item so the sidebar stays focused
               on the main destinations. */}
-          <div className="flex h-16 min-h-16 items-center justify-between px-5 border-b border-sidebar-border shrink-0">
+          {/* Centred stack: mark, wordmark, controls. One row could not hold
+              all three — the sidebar is 240px and "Fagundes Bank" is two
+              words, so the name wrapped and pushed the icons into the edge.
+              96px is the owner's call: the mark reads at full strength and
+              the header is tall, which is the trade he wanted. */}
+          <div className="flex flex-col items-center gap-2 px-5 pt-5 pb-3 border-b border-sidebar-border shrink-0">
             <Link
               to="/"
-              className="flex items-center gap-2.5 -mx-1 px-1 py-1 rounded-md hover:bg-sidebar-accent transition-colors"
+              className="rounded-md hover:opacity-80 transition-opacity"
               onClick={() => setSidebarOpen(false)}
               aria-label={t('app.name')}
               title={t('nav.dashboard')}
             >
-              <ShellLogo size={24} className="text-primary shrink-0" />
-              <span className="font-bold text-lg text-sidebar-foreground tracking-tight">
-                {t('app.name')}
-              </span>
+              <BrandLogo size={96} />
             </Link>
-            <div className="flex items-center gap-0.5">
+            <Link
+              to="/"
+              className="font-semibold text-base leading-none text-sidebar-foreground tracking-tight whitespace-nowrap hover:text-sidebar-accent-foreground transition-colors"
+              onClick={() => setSidebarOpen(false)}
+              title={t('nav.dashboard')}
+            >
+              {t('app.name')}
+            </Link>
+            <div className="flex items-center gap-1.5 pt-1">
               <button
                 onClick={togglePrivacyMode}
                 className="text-sidebar-muted hover:text-sidebar-foreground transition-colors p-1 rounded-md hover:bg-sidebar-accent"
