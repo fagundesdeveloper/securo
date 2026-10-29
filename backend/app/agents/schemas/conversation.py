@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict
 
@@ -42,3 +42,8 @@ class SendMessageRequest(BaseModel):
     # context-aware questions like "what about THIS row?". Format is
     # free-form — the frontend builds it from the active page.
     page_context: Optional[dict[str, Any]] = None
+    # Per-message overrides, so the user can reach for a bigger model or more
+    # thinking on one hard question without editing the agent. Null means
+    # "whatever the agent is configured with".
+    model: Optional[str] = None
+    reasoning: Optional[Literal["off", "auto", "high", "max"]] = None

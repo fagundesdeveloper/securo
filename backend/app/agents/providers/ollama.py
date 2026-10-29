@@ -63,6 +63,9 @@ class OllamaProvider(LLMProvider):
         tools: Optional[list[ToolDefinition]] = None,
         temperature: float = 0.4,
         max_tokens: Optional[int] = None,
+        # Accepted so every provider shares one signature; this one has
+        # no thinking budget to spend.
+        thinking_budget: Optional[int] = None,  # noqa: ARG002
     ) -> AsyncIterator[ChatChunk]:
         url = f"{self.base_url.rstrip('/')}/api/chat"
         payload: dict = {

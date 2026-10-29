@@ -4,6 +4,7 @@ from typing import Optional
 
 from app.agents.providers.anthropic import AnthropicProvider
 from app.agents.providers.base import LLMProvider
+from app.agents.providers.gemini import GeminiProvider
 from app.agents.providers.ollama import OllamaProvider
 from app.agents.providers.openai import OpenAIProvider
 from app.agents.providers.openai_compatible import OpenAICompatibleProvider
@@ -13,6 +14,7 @@ _PROVIDERS: dict[str, type[LLMProvider]] = {
     "ollama": OllamaProvider,
     "openai": OpenAIProvider,
     "anthropic": AnthropicProvider,
+    "gemini": GeminiProvider,
     "openai_compatible": OpenAICompatibleProvider,
 }
 

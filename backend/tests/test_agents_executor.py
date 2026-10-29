@@ -47,7 +47,7 @@ class _ScriptedProvider(LLMProvider):
         self._turns = list(turns)
 
     async def chat_stream(  # type: ignore[override]
-        self, messages, *, model, tools=None, temperature=0.4, max_tokens=None
+        self, messages, *, model, tools=None, temperature=0.4, max_tokens=None, **_
     ) -> AsyncIterator[ChatChunk]:
         if not self._turns:
             # No more scripted turns — emit a generic finish.
@@ -308,7 +308,7 @@ async def test_per_agent_tool_whitelist_filters_discovery(
     captured_tool_names: list[str] = []
 
     class _Capture(_ScriptedProvider):
-        async def chat_stream(self, messages, *, model, tools=None, temperature=0.4, max_tokens=None):
+        async def chat_stream(self, messages, *, model, tools=None, temperature=0.4, max_tokens=None, **_):
             captured_tool_names.extend([t.name for t in (tools or [])])
             async for c in super().chat_stream(messages, model=model, tools=tools, temperature=temperature, max_tokens=max_tokens):
                 yield c
@@ -350,7 +350,7 @@ async def test_tool_result_passed_to_llm_in_full(session, test_user, test_agent,
     captured_tool_messages: list[str] = []
 
     class _Capture(_ScriptedProvider):
-        async def chat_stream(self, messages, *, model, tools=None, temperature=0.4, max_tokens=None):
+        async def chat_stream(self, messages, *, model, tools=None, temperature=0.4, max_tokens=None, **_):
             captured_tool_messages.extend([m.content for m in messages if m.role == "tool"])
             async for c in super().chat_stream(messages, model=model, tools=tools, temperature=temperature, max_tokens=max_tokens):
                 yield c
@@ -397,7 +397,7 @@ async def test_auto_context_primer_prepended_when_enabled(session, test_user, te
     captured: dict[str, list] = {"system": []}
 
     class _Capture(_ScriptedProvider):
-        async def chat_stream(self, messages, *, model, tools=None, temperature=0.4, max_tokens=None):
+        async def chat_stream(self, messages, *, model, tools=None, temperature=0.4, max_tokens=None, **_):
             captured["system"] = [m.content for m in messages if m.role == "system"]
             async for c in super().chat_stream(messages, model=model, tools=tools, temperature=temperature, max_tokens=max_tokens):
                 yield c
@@ -436,7 +436,7 @@ async def test_auto_context_primer_skipped_when_disabled(session, test_user, tes
     captured: dict[str, list] = {"system": []}
 
     class _Capture(_ScriptedProvider):
-        async def chat_stream(self, messages, *, model, tools=None, temperature=0.4, max_tokens=None):
+        async def chat_stream(self, messages, *, model, tools=None, temperature=0.4, max_tokens=None, **_):
             captured["system"] = [m.content for m in messages if m.role == "system"]
             async for c in super().chat_stream(messages, model=model, tools=tools, temperature=temperature, max_tokens=max_tokens):
                 yield c
@@ -473,7 +473,7 @@ async def test_runtime_guardrail_always_present_even_with_no_agent_prompt(sessio
     captured: dict[str, list] = {"system": []}
 
     class _Capture(_ScriptedProvider):
-        async def chat_stream(self, messages, *, model, tools=None, temperature=0.4, max_tokens=None):
+        async def chat_stream(self, messages, *, model, tools=None, temperature=0.4, max_tokens=None, **_):
             captured["system"] = [m.content for m in messages if m.role == "system"]
             async for c in super().chat_stream(messages, model=model, tools=tools, temperature=temperature, max_tokens=max_tokens):
                 yield c

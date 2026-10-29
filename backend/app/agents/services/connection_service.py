@@ -246,6 +246,26 @@ async def test_connection(conn: LlmConnection) -> dict[str, Any]:
                 models = [m.get("id") for m in (r.json().get("data") or [])][:50]
             return {"ok": True, "detail": f"reachable ({len(models)} models)", "models": models}
 
+        if conn.kind == "gemini":
+            base = (conn.base_url or "https://generativelanguage.googleapis.com/v1beta").rstrip("/")
+            attempted = base
+            # Header rather than the `?key=` the docs show first: a URL
+            # carrying the key lands in proxy and access logs.
+            headers = {"x-goog-api-key": api_key}
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                r = await client.get(f"{base}/models", headers=headers)
+                if r.status_code in (401, 403):
+                    return {"ok": False, "detail": "auth rejected (check api key)"}
+                if r.status_code >= 400:
+                    return {"ok": False, "detail": f"HTTP {r.status_code}: {r.text[:200]}"}
+                # Gemini prefixes every id with "models/" and lists embedding
+                # models alongside the generative ones.
+                models = [
+                    (m.get("name") or "").removeprefix("models/")
+                    for m in (r.json().get("models") or [])
+                ][:50]
+            return {"ok": True, "detail": f"reachable ({len(models)} models)", "models": models}
+
         return {"ok": False, "detail": f"unknown kind: {conn.kind}"}
 
     except httpx.HTTPError as exc:

@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ShellLogo } from '@/components/shell-logo'
+import { BrandLogo } from '@/components/brand-logo'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Loader2, Send, Sparkles, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { agents } from '@/lib/api'
 import type { Agent, AgentMessage } from '@/lib/api'
-import { streamChat, type AgentStreamEvent } from '@/lib/agents-stream'
+import { streamChat, REASONING_LEVELS, type AgentStreamEvent, type ReasoningLevel } from '@/lib/agents-stream'
 import { Markdown } from '@/components/agents/markdown'
 import { ToolDebugChip } from '@/components/agents/tool-debug-chip'
 import { ProposalCard, isProposalData, isProposalToolName } from '@/components/agents/proposal-card'
@@ -24,6 +24,11 @@ interface Props {
   // the agent can reason about "this row" / "the filters above".
   // Re-read on each send so we always pick up the latest state.
   getPageContext?: () => Record<string, unknown> | null
+  // An opening question the caller wants asked for the user (the Insights
+  // page hands one over when a card is picked). Sent once, and only into a
+  // conversation that has nothing in it yet, so revisiting an existing
+  // thread never re-asks.
+  initialPrompt?: string | null
 }
 
 interface DraftMessage {
@@ -35,7 +40,7 @@ interface DraftMessage {
   pending?: boolean
 }
 
-export function ChatPanel({ agent, conversationId, onConversationCreated, focusSignal, getPageContext }: Props) {
+export function ChatPanel({ agent, conversationId, onConversationCreated, focusSignal, getPageContext, initialPrompt }: Props) {
   const { t } = useTranslation()
   const qc = useQueryClient()
   const [input, setInput] = useState('')
@@ -45,6 +50,11 @@ export function ChatPanel({ agent, conversationId, onConversationCreated, focusS
   // Last error from a chat round, kept after streaming ends so the user
   // can actually see what went wrong. Cleared when they send a new message.
   const [lastError, setLastError] = useState<string | null>(null)
+  // Per-conversation, not saved on the agent: reaching for a bigger model on
+  // one hard question should not change what every other chat uses. null
+  // means "whatever the agent is configured with".
+  const [modelOverride, setModelOverride] = useState<string | null>(null)
+  const [reasoning, setReasoning] = useState<ReasoningLevel>('auto')
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   // Whether the user is "pinned" to the bottom of the scroll area. We
@@ -112,10 +122,11 @@ export function ChatPanel({ agent, conversationId, onConversationCreated, focusS
     isAtBottomRef.current = distance < 80
   }
 
-  const send = async () => {
-    const trimmed = input.trim()
+  const send = async (override?: string) => {
+    const trimmed = (override ?? input).trim()
     if (!trimmed || streaming) return
-    setInput('')
+    // Only clear the box when the text came from it.
+    if (override === undefined) setInput('')
     setLastError(null)
     setStreaming(true)
     // User just took an action — they want to see the response.
@@ -139,6 +150,9 @@ export function ChatPanel({ agent, conversationId, onConversationCreated, focusS
         content: trimmed,
         conversationId,
         pageContext: getPageContext?.() ?? null,
+        model: modelOverride,
+        // `auto` is the provider's own default, so there is nothing to send.
+        reasoning: reasoning === 'auto' ? null : reasoning,
         onEvent: (ev: AgentStreamEvent) => {
           if (ev.kind === 'conversation') {
             activeConvId = ev.conversation_id
@@ -197,6 +211,36 @@ export function ChatPanel({ agent, conversationId, onConversationCreated, focusS
       }
     }
   }
+
+  // Models this agent's connector can actually reach. Comes from the
+  // provider itself rather than a list in the code, which would rot: the
+  // models available to a key change without warning. Fetched once per
+  // session — it is a round trip to the provider, not to us.
+  const { data: connectionTest } = useQuery({
+    queryKey: ['agent-connection-models', agent.connection_id],
+    queryFn: () => agents.connections.test(agent.connection_id as string),
+    enabled: Boolean(agent.connection_id),
+    staleTime: Infinity,
+    retry: false,
+  })
+  const models = useMemo(() => {
+    const all = connectionTest?.models ?? []
+    // Drop what cannot hold a conversation: embedding, speech and image
+    // models come back in the same list.
+    return all.filter((m) => !/embed|tts|image|vision|aqa/i.test(m))
+  }, [connectionTest])
+
+  // Ask the caller's opening question once the panel is mounted. Guarded by
+  // a ref rather than by state so a re-render mid-stream cannot ask twice,
+  // and skipped entirely for a conversation that already has history.
+  const seeded = useRef(false)
+  useEffect(() => {
+    if (!initialPrompt || seeded.current || conversationId) return
+    seeded.current = true
+    void send(initialPrompt)
+    // `send` is re-created every render; depending on it would re-run this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPrompt, conversationId])
 
   return (
     // min-h-0 is required so the inner flex-1 messages area can scroll
@@ -296,7 +340,40 @@ export function ChatPanel({ agent, conversationId, onConversationCreated, focusS
           </div>
         )}
       </div>
-      <div className="shrink-0 border-t p-3 flex items-end gap-2 bg-background">
+      <div className="shrink-0 border-t bg-background">
+        {/* Model and thinking effort, for the question that deserves more
+            than the default. Sits above the input because it changes what
+            the next message costs, not what the last one said. */}
+        <div className="flex items-center justify-end gap-2 px-3 pt-2 text-[11px] text-muted-foreground">
+          {models.length > 0 && (
+            <select
+              value={modelOverride ?? ''}
+              onChange={(e) => setModelOverride(e.target.value || null)}
+              disabled={streaming}
+              title={t('agents.chat.modelHint')}
+              className="rounded border border-border bg-card px-1.5 py-0.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+            >
+              <option value="">{t('agents.chat.modelDefault')}</option>
+              {models.map((m) => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          )}
+          <select
+            value={reasoning}
+            onChange={(e) => setReasoning(e.target.value as ReasoningLevel)}
+            disabled={streaming}
+            title={t('agents.chat.reasoningHint')}
+            className="rounded border border-border bg-card px-1.5 py-0.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+          >
+            {REASONING_LEVELS.map((level) => (
+              <option key={level} value={level}>
+                {t(`agents.chat.reasoning.${level}`)}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="p-3 pt-2 flex items-end gap-2">
         <textarea
           ref={inputRef}
           value={input}
@@ -322,9 +399,10 @@ export function ChatPanel({ agent, conversationId, onConversationCreated, focusS
             }
           }}
         />
-        <Button onClick={send} disabled={streaming || !input.trim()} className="shrink-0">
+        <Button onClick={() => send()} disabled={streaming || !input.trim()} className="shrink-0">
           {streaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         </Button>
+        </div>
       </div>
     </div>
   )
@@ -464,7 +542,7 @@ function ChatEmptyState({ agent, onPick }: { agent: Agent; onPick: (text: string
     <div className="flex flex-col items-center justify-center text-center gap-5 py-12 min-h-[65vh]">
       {/* Brand mark — uses the primary indigo so it reads as Securo, not
           as the agent's accent color. Transparent background. */}
-      <ShellLogo size={56} className="text-primary opacity-90" />
+      <BrandLogo size={64} className="opacity-90" />
       <div className="space-y-1 px-6">
         <div className="text-base font-semibold">{agent.name}</div>
         {agent.description && (

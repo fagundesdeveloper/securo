@@ -81,6 +81,8 @@ async def chat(
                 user_message=body.content,
                 channel=body.channel,
                 page_context=body.page_context,
+                model_override=body.model,
+                reasoning=body.reasoning,
             ):
                 yield _format_event(ev)
         except Exception as exc:  # noqa: BLE001

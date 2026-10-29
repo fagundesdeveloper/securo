@@ -1,5 +1,7 @@
 .venv/
 .env
+# Backups do .env guardam a chave de API em claro; nunca entram no historico.
+.env.bak-*
 secrets/
 .worktrees/
 .DS_Store

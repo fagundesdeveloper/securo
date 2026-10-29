@@ -361,7 +361,7 @@ async def test_generate_title_uses_llm(
     class _Scripted(LLMProvider):
         name = "openai"
 
-        async def chat_stream(self, messages, *, model, tools=None, temperature=0.4, max_tokens=None):
+        async def chat_stream(self, messages, *, model, tools=None, temperature=0.4, max_tokens=None, **_):
             # not used for title (we call .chat() which goes through .chat_stream)
             yield  # pragma: no cover
             return  # pragma: no cover

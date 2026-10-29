@@ -15,6 +15,11 @@ export type AgentStreamEvent =
   | { kind: 'error'; error_code?: string; error_message?: string }
   | { kind: 'done'; finish_reason?: string }
 
+/** How much the model may spend thinking. `auto` is its own default. */
+export type ReasoningLevel = 'off' | 'auto' | 'high' | 'max'
+
+export const REASONING_LEVELS: readonly ReasoningLevel[] = ['off', 'auto', 'high', 'max']
+
 export interface SendMessageOptions {
   agentId: string
   content: string
@@ -24,6 +29,10 @@ export interface SendMessageOptions {
   // system primer so the agent can answer "what about this row?" style
   // questions. Built by the global slide-over from page registrations.
   pageContext?: Record<string, unknown> | null
+  // Per-message overrides. Null/undefined means "whatever the agent is
+  // configured with", so the common case sends nothing.
+  model?: string | null
+  reasoning?: ReasoningLevel | null
   signal?: AbortSignal
   onEvent: (ev: AgentStreamEvent) => void
 }
@@ -48,6 +57,8 @@ export async function streamChat(opts: SendMessageOptions): Promise<void> {
       conversation_id: opts.conversationId ?? null,
       channel: opts.channel ?? 'web',
       page_context: opts.pageContext ?? null,
+      model: opts.model ?? null,
+      reasoning: opts.reasoning ?? null,
     }),
   })
 

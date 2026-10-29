@@ -66,6 +66,29 @@ class ExecutorEvent:
     finish_reason: Optional[str] = None
 
 
+# Thinking budgets per level. Measured against gemini-3-flash-preview, which
+# accepts anything from 0 to 32768 and treats the number as a ceiling: a
+# trivial question costs a couple of hundred tokens whatever this says, so the
+# level only changes what the model is *allowed* to spend on a hard one.
+#   off  — do not think
+#   auto — the model decides (its own default)
+#   high — room for a long chain
+#   max  — the ceiling the API accepts
+_THINKING_BUDGETS: dict[str, int] = {
+    "off": 0,
+    "auto": -1,
+    "high": 24576,
+    "max": 32768,
+}
+
+
+def _thinking_budget(reasoning: Optional[str]) -> Optional[int]:
+    """None when the caller said nothing, so the provider sends no config."""
+    if not reasoning:
+        return None
+    return _THINKING_BUDGETS.get(reasoning)
+
+
 def _provider_for(agent: Agent):
     """Build a provider from env-var defaults (no connection lookup).
 
@@ -330,6 +353,8 @@ class AgentExecutor:
         user_message: str,
         channel: str = "web",
         page_context: Optional[dict[str, Any]] = None,
+        model_override: Optional[str] = None,
+        reasoning: Optional[str] = None,
     ) -> AsyncIterator[ExecutorEvent]:
         # 1. Persist the user message first so it survives crashes.
         await conversation_service.append_message(
@@ -386,7 +411,11 @@ class AgentExecutor:
         for m in history:
             tcs = []
             for raw in (m.tool_calls or []):
-                tcs.append(ToolCall(id=raw.get("id"), name=raw.get("name"), arguments=raw.get("arguments") or {}))
+                tcs.append(ToolCall(
+                    id=raw.get("id"), name=raw.get("name"),
+                    arguments=raw.get("arguments") or {},
+                    signature=raw.get("signature"),
+                ))
             tool_call_id = (m.tool_result or {}).get("tool_call_id") if m.role == "tool" else None
             content = m.content
             if m.role == "tool":
@@ -418,10 +447,13 @@ class AgentExecutor:
         # via _provider_for; production prefers _provider_and_model_for.
         try:
             provider, model = await _provider_and_model_for(session, agent)
+            # The caller may reach for a different model on one message.
+            if model_override:
+                model = model_override
         except Exception:  # noqa: BLE001
             logger.exception("provider resolution failed; falling back to legacy path")
             provider = _provider_for(agent)
-            model = _model_for(agent)
+            model = model_override or _model_for(agent)
         if not model:
             yield ExecutorEvent(
                 type="error",
@@ -446,6 +478,7 @@ class AgentExecutor:
                     model=model,
                     tools=tool_defs or None,
                     temperature=agent.temperature,
+                    thinking_budget=_thinking_budget(reasoning),
                 ):
                     async for ev in _process_chunk(chunk, text_buf, open_calls):
                         yield ev
@@ -477,7 +510,10 @@ class AgentExecutor:
                     args = json.loads(tc["args_buf"]) if tc["args_buf"] else {}
                 except json.JSONDecodeError:
                     args = {"_raw": tc["args_buf"]}
-                assembled_calls.append(ToolCall(id=tc["id"], name=tc["name"], arguments=args))
+                assembled_calls.append(ToolCall(
+                    id=tc["id"], name=tc["name"], arguments=args,
+                    signature=tc.get("signature"),
+                ))
 
             # Persist assistant turn.
             assistant_msg = await conversation_service.append_message(
@@ -485,7 +521,11 @@ class AgentExecutor:
                 conversation_id=conversation_id,
                 role="assistant",
                 content=assistant_text or None,
-                tool_calls=[{"id": c.id, "name": c.name, "arguments": c.arguments} for c in assembled_calls] or None,
+                tool_calls=[
+                    {"id": c.id, "name": c.name, "arguments": c.arguments,
+                     **({"signature": c.signature} if c.signature else {})}
+                    for c in assembled_calls
+                ] or None,
                 input_tokens=usage_input or None,
                 output_tokens=usage_output or None,
             )
@@ -595,6 +635,7 @@ async def _process_chunk(chunk: ChatChunk, text_buf: list[str], open_calls: dict
             "id": chunk.tool_call_id,
             "name": chunk.tool_name or "",
             "args_buf": "",
+            "signature": chunk.signature,
         }
     elif chunk.type == "tool_call_args_delta" and chunk.tool_call_id:
         tc = open_calls.setdefault(chunk.tool_call_id, {"id": chunk.tool_call_id, "name": "", "args_buf": ""})

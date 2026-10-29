@@ -35,8 +35,10 @@ from app.agents.providers.openai import (
 pytestmark = pytest.mark.asyncio
 
 
-def test_registry_lists_all_four_providers():
-    assert set(list_providers()) == {"ollama", "openai", "anthropic", "openai_compatible"}
+def test_registry_lists_every_provider():
+    assert set(list_providers()) == {
+        "ollama", "openai", "anthropic", "gemini", "openai_compatible",
+    }
 
 
 def test_registry_unknown_raises():
@@ -209,7 +211,7 @@ class _ScriptedProvider(LLMProvider):
         self._chunks = chunks
 
     async def chat_stream(  # type: ignore[override]
-        self, messages, *, model, tools=None, temperature=0.4, max_tokens=None
+        self, messages, *, model, tools=None, temperature=0.4, max_tokens=None, **_
     ) -> AsyncIterator[ChatChunk]:
         for c in self._chunks:
             yield c
@@ -236,3 +238,74 @@ async def test_chat_helper_aggregates_text_and_tool_calls():
     assert len(res.tool_calls) == 1
     assert res.tool_calls[0].name == "list_accounts"
     assert res.tool_calls[0].arguments == {"x": 1}
+
+
+def test_gemini_strips_schema_keywords_it_rejects():
+    """MCP tool schemas carry keywords Gemini 400s on.
+
+    `additionalProperties`, `$schema` and the composition keywords are not in
+    the OpenAPI subset its function declarations accept, and every MCP tool
+    here ships at least one of them — so an unfiltered schema fails the whole
+    request, not just that tool.
+    """
+    from app.agents.providers.gemini import _serialize_tools
+    from app.agents.providers.base import ToolDefinition
+
+    declared = _serialize_tools([ToolDefinition(
+        name="get_spending",
+        description="spend by category",
+        parameters={
+            "type": "object",
+            "additionalProperties": False,
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "properties": {
+                "category": {"type": "string", "additionalProperties": False},
+                "months": {"type": "array", "items": {"type": "string", "$id": "x"}},
+                "limit": {"type": "integer", "exclusiveMinimum": 0, "maximum": 50},
+                "note": {"type": ["string", "null"], "description": "optional"},
+            },
+            "required": ["category"],
+        },
+    )])
+
+    params = declared[0]["functionDeclarations"][0]["parameters"]
+    assert "additionalProperties" not in params
+    assert "$schema" not in params
+    assert "additionalProperties" not in params["properties"]["category"]
+    assert "$id" not in params["properties"]["months"]["items"]
+    # exclusiveMinimum is the one that actually broke a live request.
+    assert "exclusiveMinimum" not in params["properties"]["limit"]
+    assert params["properties"]["limit"]["maximum"] == 50
+    # A ["string", "null"] type becomes one type plus the nullable flag.
+    assert params["properties"]["note"]["type"] == "string"
+    assert params["properties"]["note"]["nullable"] is True
+    # What the tool actually needs has to survive the filtering.
+    assert params["required"] == ["category"]
+    assert params["properties"]["months"]["type"] == "array"
+
+
+def test_gemini_replays_the_thought_signature_with_the_call():
+    """Gemini 3 rejects a replayed function call that lost its signature.
+
+    It arrives on the same part as the functionCall and has to go back on that
+    same part, or the next turn fails with INVALID_ARGUMENT.
+    """
+    from app.agents.providers.gemini import _serialize_messages
+    from app.agents.providers.base import ChatMessage, ToolCall
+
+    contents = _serialize_messages([
+        ChatMessage(role="user", content="how much?"),
+        ChatMessage(role="assistant", tool_calls=[
+            ToolCall(id="get_spending-1", name="get_spending",
+                     arguments={"category": "Mercado"}, signature="SIG123"),
+        ]),
+        ChatMessage(role="tool", tool_call_id="get_spending-1",
+                    name="get_spending", content='{"total": 10}'),
+    ])
+
+    call_part = contents[1]["parts"][0]
+    assert call_part["functionCall"]["name"] == "get_spending"
+    assert call_part["thoughtSignature"] == "SIG123"
+    # The result is keyed by name, not by id, and must be an object.
+    assert contents[2]["parts"][0]["functionResponse"]["name"] == "get_spending"
+    assert contents[2]["parts"][0]["functionResponse"]["response"] == {"result": '{"total": 10}'}
