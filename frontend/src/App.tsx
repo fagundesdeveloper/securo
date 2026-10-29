@@ -34,8 +34,6 @@ const GroupDetailPage = lazy(() => import('@/pages/group-detail'))
 const AdminSettingsPage = lazy(() => import('@/pages/admin/settings'))
 const AgentsListPage = lazy(() => import('@/pages/agents-list'))
 const InsightsPage = lazy(() => import('@/pages/insights'))
-// TEMPORARY — brand header harness, delete with its route.
-const BrandPreviewPage = lazy(() => import('@/pages/brand-preview'))
 const AgentDetailPage = lazy(() => import('@/pages/agent-detail'))
 const AgentConnectionsPage = lazy(() => import('@/pages/agent-connections'))
 const InvoicesPage = lazy(() => import('@/pages/invoices'))
@@ -70,7 +68,6 @@ function App() {
             <Suspense fallback={<LoadingFallback />}>
               <Routes>
                 <Route path="/setup" element={<SetupPage />} />
-                <Route path="/brand-preview" element={<BrandPreviewPage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/auth/oidc/callback" element={<OIDCCallbackPage />} />
                 <Route path="/register" element={<RegisterPage />} />
