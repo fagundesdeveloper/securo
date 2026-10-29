@@ -868,18 +868,67 @@ async def import_transactions(
     await session.commit()
     return imported, skipped, excluded_count, import_log.id
 
+# Currency symbols and ISO codes around a number ("R$", "$", "NGN ", " EUR").
+_AMOUNT_EDGE_LEADING = re.compile(r'^[^\d\-+(),.]+')
+_AMOUNT_EDGE_TRAILING = re.compile(r'[^\d\-+(),.]+$')
+_DR_CR_SUFFIX = re.compile(r'(?i)(?<![a-z])(dr|cr)\.?$')
+# U+2212 minus, U+2012 figure dash, U+2013 en dash, U+FE63 small and
+# U+FF0D fullwidth hyphen-minus: spreadsheet exports use them as a minus.
+_UNICODE_MINUS = str.maketrans({c: '-' for c in '\u2212\u2012\u2013\ufe63\uff0d'})
+
+
+def _strip_amount_decorations(amount_str: str) -> tuple[str, bool]:
+    """Remove currency symbols, codes, whitespace and sign markers.
+
+    Returns the bare number and whether it was negative. A leading minus
+    (ASCII or a Unicode minus sign), accounting parentheses, e.g. "(12.50)",
+    or a trailing "DR" mark a negative amount; a trailing "CR" marks a
+    positive one.
+    """
+    s = re.sub(r"[\s'\u00a0\u202f]", "", amount_str).translate(_UNICODE_MINUS)
+    # A standalone DR/CR suffix carries the sign, so read it before the edge
+    # strip below would drop it as a currency code. Codes such as "XDR" or
+    # "CRC" do not match.
+    marker = _DR_CR_SUFFIX.search(s)
+    if marker:
+        s = s[: marker.start()]
+    negative = False
+    while True:
+        before = s
+        s = _AMOUNT_EDGE_LEADING.sub("", s)
+        s = _AMOUNT_EDGE_TRAILING.sub("", s)
+        if len(s) >= 2 and s[0] == "(" and s[-1] == ")":
+            negative = not negative
+            s = s[1:-1]
+        elif s[:1] == "-":
+            negative = not negative
+            s = s[1:]
+        elif s[:1] == "+":
+            s = s[1:]
+        if s == before:
+            if marker:
+                negative = marker.group(1).lower() == "dr"
+            return s, negative
+
+
 def normalize_amount(amount_str: str | None) -> str:
     """
     Normalize monetary string into a standard decimal format compatible with Decimal.
 
+    Currency symbols and codes around the number are dropped, and accounting
+    parentheses read as a negative amount.
+
     Example:
         1.442,20 -> 1442.20
         1,442.20 -> 1442.20
+        -R$ 1.234,56 -> -1234.56
     """
     if not amount_str:
         return ""
 
-    amount_str = str(amount_str).replace('R$', '').strip()
+    amount_str, negative = _strip_amount_decorations(str(amount_str))
+    if not amount_str:
+        return ""
 
     if ',' in amount_str and '.' in amount_str:
         if amount_str.rfind(',') > amount_str.rfind('.'):
@@ -889,4 +938,4 @@ def normalize_amount(amount_str: str | None) -> str:
     elif ',' in amount_str:
         amount_str = amount_str.replace(',', '.')
 
-    return amount_str
+    return f"-{amount_str}" if negative else amount_str
