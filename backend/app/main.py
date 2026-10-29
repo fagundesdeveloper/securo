@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.accounts import router as accounts_router
 from app.api.budgets import router as budgets_router
+from app.api.action_plans import router as action_plans_router
 from app.api.goals import router as goals_router
 from app.api.groups import router as groups_router
 from app.api.categories import router as categories_router
@@ -147,6 +148,7 @@ app.include_router(
 # user_lookup must precede the fastapi-users router below so the
 # `/api/users/lookup` path isn't captured by the catch-all `/{id}`
 # route fastapi-users mounts.
+app.include_router(action_plans_router)
 app.include_router(user_lookup_router)
 app.include_router(
     fastapi_users.get_users_router(UserRead, UserUpdate),
