@@ -31,8 +31,9 @@ What this is NOT:
 Deployment flags and this resolver answer different questions and
 coexist deliberately: a flag turns a capability off for the whole
 install (the operator's call), a kind policy turns it off for one
-workspace. `AGENTS_ENABLED` is still read directly by the frontend and
-is not part of the catalog — see MODULE_DEPLOYMENT_FLAGS.
+workspace. `AGENTS_ENABLED` is read directly by the frontend for the
+agent management pages, and also vetoes the `insights` module here — the
+same flag answering the same question in the two places that need it.
 """
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
@@ -59,6 +60,7 @@ class ModuleId(str, Enum):
     SPLIT_GROUPS = "split_groups"
     RULES = "rules"
     INVOICES = "invoices"
+    INSIGHTS = "insights"
 
 
 @dataclass(frozen=True)
@@ -87,6 +89,10 @@ CATALOG: Mapping[ModuleId, ModuleSpec] = {
         ModuleSpec(ModuleId.SPLIT_GROUPS, default_enabled=True),
         ModuleSpec(ModuleId.RULES, default_enabled=True),
         ModuleSpec(ModuleId.INVOICES, default_enabled=False),
+        # On by default, but layer 0 takes it away wherever the agents
+        # feature is off — the page is an agent surface and has nothing
+        # to run without one.
+        ModuleSpec(ModuleId.INSIGHTS, default_enabled=True),
     )
 }
 
@@ -195,7 +201,12 @@ DEFAULT_PROVIDERS: Sequence[ModuleProvider] = (
 # `agents` is deliberately absent. It is not a catalog module: the
 # frontend reads AGENTS_ENABLED straight from /api/info at its own call
 # sites, and folding it in here would turn this into an agents refactor.
-MODULE_DEPLOYMENT_FLAGS: Mapping[ModuleId, str] = {}
+MODULE_DEPLOYMENT_FLAGS: Mapping[ModuleId, str] = {
+    # Insights renders the agent's analysis, so the capability flag that
+    # turns agents off has to take the destination with it. A veto, not a
+    # grant: it can only remove what layers 1-4 proposed.
+    ModuleId.INSIGHTS: "AGENTS_ENABLED",
+}
 
 
 class ModuleResolver:

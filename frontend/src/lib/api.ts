@@ -1,6 +1,7 @@
 import axios from 'axios'
 import type { NumberFormat, DateFormat } from '@/lib/format'
 import type {
+  ActionPlan,
   User,
   AdminUser,
   AdminUserList,
@@ -960,6 +961,26 @@ export const recurring = {
 }
 
 // Budgets
+export const actionPlans = {
+  list: async (month?: string): Promise<ActionPlan[]> => {
+    const { data } = await api.get('/action-plans', { params: { month } })
+    return data
+  },
+  create: async (plan: { month: string; body: string }): Promise<ActionPlan> => {
+    const { data } = await api.post('/action-plans', plan)
+    return data
+  },
+  // `review: ''` clears the verdict and reopens the month — the server
+  // drops `reviewed_at` with it.
+  update: async (id: string, plan: { body?: string; review?: string }): Promise<ActionPlan> => {
+    const { data } = await api.patch(`/action-plans/${id}`, plan)
+    return data
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/action-plans/${id}`)
+  },
+}
+
 export const budgets = {
   list: async (month?: string): Promise<Budget[]> => {
     const { data } = await api.get('/budgets', { params: { month } })

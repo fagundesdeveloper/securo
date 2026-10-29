@@ -33,6 +33,9 @@ const GroupsPage = lazy(() => import('@/pages/groups'))
 const GroupDetailPage = lazy(() => import('@/pages/group-detail'))
 const AdminSettingsPage = lazy(() => import('@/pages/admin/settings'))
 const AgentsListPage = lazy(() => import('@/pages/agents-list'))
+const InsightsPage = lazy(() => import('@/pages/insights'))
+// TEMPORARY — brand header harness, delete with its route.
+const BrandPreviewPage = lazy(() => import('@/pages/brand-preview'))
 const AgentDetailPage = lazy(() => import('@/pages/agent-detail'))
 const AgentConnectionsPage = lazy(() => import('@/pages/agent-connections'))
 const InvoicesPage = lazy(() => import('@/pages/invoices'))
@@ -67,6 +70,7 @@ function App() {
             <Suspense fallback={<LoadingFallback />}>
               <Routes>
                 <Route path="/setup" element={<SetupPage />} />
+                <Route path="/brand-preview" element={<BrandPreviewPage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/auth/oidc/callback" element={<OIDCCallbackPage />} />
                 <Route path="/register" element={<RegisterPage />} />
@@ -100,6 +104,10 @@ function App() {
                   <Route path="/invoices" element={<ModuleRoute module="invoices"><InvoicesPage /></ModuleRoute>} />
                   <Route path="/workspace/settings" element={<WorkspaceSettingsPage />} />
                   <Route path="/admin" element={<AdminRoute><AdminSettingsPage /></AdminRoute>} />
+                  {/* The `insights` module is itself vetoed when agents are
+                      off (module_service's deployment layer), so ModuleRoute
+                      alone already bounces a direct URL. */}
+                  <Route path="/insights" element={<ModuleRoute module="insights"><InsightsPage /></ModuleRoute>} />
                   <Route path="/agents" element={<AgentsRoute><AgentsListPage /></AgentsRoute>} />
                   <Route path="/agents/connections" element={<AgentsRoute><AgentConnectionsPage /></AgentsRoute>} />
                   <Route path="/agents/:id" element={<AgentsRoute><AgentDetailPage /></AgentsRoute>} />

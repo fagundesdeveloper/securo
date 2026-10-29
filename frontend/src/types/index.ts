@@ -480,6 +480,18 @@ export interface ImportLog {
   created_at: string
 }
 
+export interface ActionPlan {
+  id: string
+  /** First day of the month the plan is for. */
+  month: string
+  body: string
+  /** The verdict, written after the month closed. Null until then. */
+  review: string | null
+  reviewed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface ImportPreviewTransaction {
   description: string
   amount: number

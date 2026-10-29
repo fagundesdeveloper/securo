@@ -7,6 +7,7 @@ import {
   Receipt,
   Repeat,
   SlidersHorizontal,
+  Sparkles,
   Split,
   Tag,
   Target,
@@ -41,6 +42,9 @@ export const navItems: NavItem[] = [
   { type: 'link', key: 'import', path: '/import', icon: Upload, module: 'import' },
   { type: 'separator', labelKey: 'nav.groupAnalysis' },
   { type: 'link', key: 'reports', path: '/reports', icon: BarChart3, module: 'reports' },
+  // Its own module, resolved server-side: the deployment layer drops it
+  // wherever AGENTS_ENABLED is off, so the sidebar needs no special case.
+  { type: 'link', key: 'insights', path: '/insights', icon: Sparkles, module: 'insights' },
   { type: 'link', key: 'assets', path: '/assets', icon: Landmark, module: 'assets' },
   { type: 'separator', labelKey: 'nav.groupSetup' },
   { type: 'link', key: 'budgets', path: '/budgets', icon: PiggyBank, module: 'budgets' },

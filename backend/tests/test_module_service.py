@@ -28,6 +28,7 @@ PERSONAL_MODULES = [
     "categories",
     "goals",
     "import",
+    "insights",
     "payees",
     "recurring",
     "reports",
@@ -87,9 +88,26 @@ def test_layers_three_and_four_abstain():
     assert SupplementalProvider().apply(current, workspace) is None
 
 
-def test_deployment_flag_mapping_ships_empty():
-    """No catalog module is deployment-gated today."""
-    assert MODULE_DEPLOYMENT_FLAGS == {}
+def test_insights_is_the_only_deployment_gated_module():
+    """Keeps the deployment layer from becoming a general feature-flag bus.
+
+    `insights` is gated because the page is an agent surface; anything else
+    wanting a flag should justify it here rather than quietly appear.
+    """
+    assert MODULE_DEPLOYMENT_FLAGS == {ModuleId.INSIGHTS: "AGENTS_ENABLED"}
+
+
+def test_insights_disappears_when_agents_are_off():
+    """The real reason the deployment layer exists."""
+    resolver = ModuleResolver(flag_reader=lambda name: False)
+    assert "insights" not in resolver.resolve(ws("personal"))
+    # It is the only thing the veto takes away.
+    assert set(resolver.resolve(ws("personal"))) == set(PERSONAL_MODULES) - {"insights"}
+
+
+def test_insights_stays_when_agents_are_on():
+    resolver = ModuleResolver(flag_reader=lambda name: True)
+    assert "insights" in resolver.resolve(ws("personal"))
 
 
 def test_deployment_layer_vetoes_when_its_flag_is_off():
