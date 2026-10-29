@@ -216,4 +216,44 @@
   .securo-aurora {
     animation: none;
   }
+
+  /* The block above only ever covered the login aurora, while the rest of
+     the UI carries ~250 Tailwind transitions that ran regardless. Someone
+     who asked the system for less movement was still getting all of them.
+     Near-zero rather than `none` so transitionend/animationend handlers
+     still fire and nothing waits forever for an event that never comes. */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Translucent chrome is decoration; legibility is not. When the system asks
+   for less transparency, the blur goes and the surface becomes opaque. */
+@media (prefers-reduced-transparency: reduce) {
+  .backdrop-blur-sm,
+  .backdrop-blur,
+  .backdrop-blur-md,
+  .backdrop-blur-lg,
+  .backdrop-blur-xl {
+    backdrop-filter: none !important;
+    background-color: var(--card) !important;
+  }
+}
+
+/* More contrast: give every surface a defined edge instead of relying on a
+   fill that differs from the background by a few percent. */
+@media (prefers-contrast: more) {
+  :root {
+    --border: currentColor;
+  }
+
+  .border,
+  .border-border {
+    border-width: 1px;
+  }
 }
