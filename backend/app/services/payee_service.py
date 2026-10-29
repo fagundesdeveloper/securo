@@ -1,3 +1,4 @@
+import re
 import uuid
 from datetime import date
 from decimal import Decimal
@@ -104,6 +105,24 @@ async def get_or_create_payee(
     payee = result.scalar_one_or_none()
     if payee:
         return payee
+
+    # Open Finance names a person by their document, so a payee whose real
+    # name has since been recovered would not be found by name and a second
+    # row would appear under the CPF again on the next sync. Match the stored
+    # document before giving up — same counterparty, whatever the bank calls
+    # it this time.
+    digits = re.sub(r"\D", "", name)
+    if len(digits) in (11, 14):
+        by_document = select(Payee).join(
+            PayeeTaxId, PayeeTaxId.payee_id == Payee.id
+        ).where(PayeeTaxId.value == digits)
+        if workspace_id is not None:
+            by_document = by_document.where(Payee.workspace_id == workspace_id)
+        else:
+            by_document = by_document.where(Payee.user_id == user_id)
+        payee = (await session.execute(by_document)).scalars().first()
+        if payee:
+            return payee
 
     payee = Payee(user_id=user_id, name=name, source=source)
     if workspace_id is not None:

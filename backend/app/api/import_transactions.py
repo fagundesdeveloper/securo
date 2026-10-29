@@ -147,6 +147,18 @@ async def preview_import(
     transactions = await import_service.enrich_with_category_suggestions(
         session, ctx.workspace.id, transactions,
     )
+    # Then the model, on whatever the rules could not place. It writes
+    # suggestions, never categories: the review table still shows each one for
+    # the user to accept, and a model that is down or slow costs this step and
+    # nothing else.
+    model_suggested = await import_service.enrich_with_model_suggestions(
+        session, ctx.workspace.id, ctx.user_id, transactions,
+    )
+    if model_suggested:
+        logger.info(
+            "Import preview: model suggested a category for %d of %d rows",
+            model_suggested, len(transactions),
+        )
 
     # Expose CSV headers so the UI can offer accurate column-mapping dropdowns.
     csv_columns: list[str] = []

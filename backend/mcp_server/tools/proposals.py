@@ -19,7 +19,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.account import Account
@@ -1039,17 +1039,42 @@ def _today():
     name="propose_create_payee_rule",
     description=_PROPOSAL_PREFACE
     + (
-        "Preview a rule that auto-categorizes future transactions matching "
-        "a description pattern. Returns the proposed rule shape."
+        "Preview a rule that files a counterparty under a category — both the "
+        "transactions already recorded and the ones still to arrive. Use this "
+        "when the user says what something actually is ('that one is the "
+        "kids' school'), rather than re-categorizing rows one by one: the "
+        "rule carries the answer forward. The pattern is matched against the "
+        "description AND the payee, because banks put the counterparty in "
+        "either and truncate the description. Set overwrite_existing when the "
+        "user is correcting a wrong category rather than filling a blank — "
+        "without it, rows that already have a category are left alone."
     ),
     parameters={
         "type": "object",
         "properties": {
             "match_pattern": {
                 "type": "string",
-                "description": "Substring to match in transaction description (case-insensitive)",
+                "description": (
+                    "Substring to look for in the description or the payee "
+                    "(case-insensitive, accent-insensitive). Prefer the "
+                    "shortest form that is still unambiguous, since banks "
+                    "truncate: 'COLEGIO EXEMPLO' over the full legal name."
+                ),
             },
             "category_id": {"type": "string", "format": "uuid"},
+            "name": {
+                "type": "string",
+                "description": "Rule name shown in the UI. Write it in the user's language.",
+            },
+            "overwrite_existing": {
+                "type": "boolean",
+                "default": False,
+                "description": (
+                    "True to replace a category the matching transactions "
+                    "already have. Needed to correct a mistake; leave false "
+                    "to only fill in what is uncategorized."
+                ),
+            },
             "apply": _APPLY_FIELD,
         },
         "required": ["match_pattern", "category_id"],
@@ -1064,6 +1089,8 @@ async def propose_create_payee_rule(
     ctx: CallContext,
     match_pattern: str,
     category_id: str,
+    name: str | None = None,
+    overwrite_existing: bool = False,
     apply: bool = False,
 ) -> dict[str, Any]:
     ws_id = await resolve_workspace_id(session, ctx)
@@ -1076,13 +1103,64 @@ async def propose_create_payee_rule(
     if cat is None:
         return {"error": "category not found"}
 
+    rule_name = (name or f"{cat.name}: {match_pattern}").strip()[:120]
+    # Either field, not both: the counterparty shows up in `payee` on synced
+    # rows and inside `description` on imported ones, and a rule demanding
+    # both matches neither.
+    conditions = [
+        RuleCondition(field="description", op="contains", value=match_pattern),
+        RuleCondition(field="payee", op="contains", value=match_pattern),
+    ]
+
+    # Count what it would touch, so the preview says something the user can
+    # judge instead of just echoing the pattern back.
+    like = f"%{match_pattern}%"
+    would_match = (
+        await session.execute(
+            select(func.count())
+            .select_from(Transaction)
+            .where(
+                Transaction.workspace_id == ws_id,
+                Transaction.source != "opening_balance",
+                or_(
+                    Transaction.description.ilike(like),
+                    Transaction.payee.ilike(like),
+                ),
+            )
+        )
+    ).scalar_one()
+    already_categorized = (
+        await session.execute(
+            select(func.count())
+            .select_from(Transaction)
+            .where(
+                Transaction.workspace_id == ws_id,
+                Transaction.source != "opening_balance",
+                Transaction.category_id.is_not(None),
+                Transaction.category_id != cat.id,
+                or_(
+                    Transaction.description.ilike(like),
+                    Transaction.payee.ilike(like),
+                ),
+            )
+        )
+    ).scalar_one()
+
     preview = {
         "kind": "create_payee_rule",
         "proposed": {
+            "name": rule_name,
             "match_pattern": match_pattern,
             "category_id": str(cat.id),
             "category_name": cat.name,
+            "matches_description_or_payee": True,
+            "overwrite_existing": overwrite_existing,
         },
+        "would_match_count": would_match,
+        # The ones a non-overwriting rule would walk past. Worth saying out
+        # loud: this is the difference between "filled the blanks" and
+        # "corrected the mistake".
+        "already_categorized_elsewhere": already_categorized,
         "apply_endpoint": "POST /api/rules",
     }
 
@@ -1092,10 +1170,12 @@ async def propose_create_payee_rule(
             ws_id,
             ctx.user_id,
             RuleCreate(
-                name=f"Auto-categorize: {match_pattern}",
-                conditions_op="and",
-                conditions=[RuleCondition(field="description", op="contains", value=match_pattern)],
+                name=rule_name,
+                conditions_op="or",
+                conditions=conditions,
                 actions=[RuleAction(op="set_category", value=str(cat.id))],
+                apply_to_existing=True,
+                overwrite_existing_categories=overwrite_existing,
             ),
         )
         return {**preview, "applied": True, "id": str(created.id)}

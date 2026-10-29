@@ -460,3 +460,47 @@ async def test_get_payee_summary_no_transactions(session: AsyncSession, test_use
     assert summary["transaction_count"] == 0
     assert summary["last_transaction_date"] is None
     assert summary["most_common_category"] is None
+
+
+@pytest.mark.asyncio
+async def test_payee_arriving_as_a_document_finds_the_renamed_person(
+    session: AsyncSession, test_user: User, test_workspace
+):
+    """Open Finance names a person by their CPF.
+
+    Once the real name has been recovered from the bank's description, the
+    payee no longer matches by name — so without the document lookup the next
+    sync creates a second row under the CPF again, which is exactly the mess
+    recovering the name cleaned up.
+    """
+    from app.models.payee import PayeeTaxId
+    from app.services.payee_service import get_or_create_payee
+
+    person = await get_or_create_payee(
+        session, test_user.id, "111.222.333-44", workspace_id=test_workspace.id
+    )
+    person.name = "MARIA DE SOUZA LIMA"
+    session.add(PayeeTaxId(
+        payee_id=person.id, workspace_id=test_workspace.id,
+        kind="cpf", value="11122233344",
+    ))
+    await session.commit()
+
+    # Formatted as the bank always sends it.
+    again = await get_or_create_payee(
+        session, test_user.id, "111.222.333-44", workspace_id=test_workspace.id
+    )
+    assert again.id == person.id
+    assert again.name == "MARIA DE SOUZA LIMA"
+
+    # Bare digits are the same counterparty.
+    unformatted = await get_or_create_payee(
+        session, test_user.id, "11122233344", workspace_id=test_workspace.id
+    )
+    assert unformatted.id == person.id
+
+    # A different document is a different person, not a near-match.
+    other = await get_or_create_payee(
+        session, test_user.id, "555.666.777-88", workspace_id=test_workspace.id
+    )
+    assert other.id != person.id

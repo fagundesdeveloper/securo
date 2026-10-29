@@ -949,9 +949,6 @@ async def enrich_with_category_suggestions(
     )
     category_name_map = {str(c.id): c.name for c in category_result.scalars()}
 
-    if not rules:
-        return transactions
-
     for txn in transactions:
         proxy: Transaction = Transaction(
             description=txn.description,
@@ -974,6 +971,25 @@ async def enrich_with_category_suggestions(
             txn.suggested_category_name = category_name_map.get(str(proxy.category_id))
 
     return transactions
+
+
+async def enrich_with_model_suggestions(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    user_id: uuid.UUID,
+    transactions: list[TransactionImport],
+) -> int:
+    """Ask the model about whatever the rules could not place.
+
+    Separate from `enrich_with_category_suggestions` so the rules still run
+    when there is no model configured, and so a model that is slow or down
+    delays nothing but its own step. Returns how many rows it filled.
+    """
+    from app.services import category_suggestion_service
+
+    return await category_suggestion_service.suggest_categories(
+        session, workspace_id, user_id, transactions
+    )
 
 
 async def import_transactions(

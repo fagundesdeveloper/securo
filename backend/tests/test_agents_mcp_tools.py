@@ -575,6 +575,71 @@ async def test_propose_create_payee_rule_unknown_category(
     assert result["error"] == "category not found"
 
 
+async def test_propose_create_payee_rule_matches_payee_as_well_as_description(
+    session: AsyncSession, ctx: CallContext, test_workspace, test_user
+):
+    """A rule on the description alone misses most of what it should catch.
+
+    Banks put the counterparty in `payee` on synced rows and inside
+    `description` on imported ones, and truncate the description besides, so
+    the condition has to be an OR across both fields.
+    """
+    from app.models.category import Category
+
+    category = Category(name="Mercado", workspace_id=test_workspace.id, user_id=test_user.id)
+    session.add(category)
+    await session.commit()
+
+    handler = REGISTRY["propose_create_payee_rule"].handler
+    result = await handler(
+        session=session, ctx=ctx,
+        match_pattern="LOJA DE SUPLEMENTOS",
+        category_id=str(category.id),
+    )
+
+    assert result["kind"] == "create_payee_rule"
+    assert result["proposed"]["matches_description_or_payee"] is True
+    assert result["proposed"]["category_name"] == "Mercado"
+    # Named for the user, not "Auto-categorize: X".
+    assert result["proposed"]["name"] == "Mercado: LOJA DE SUPLEMENTOS"
+    # A preview nobody can judge is just the pattern echoed back.
+    assert "would_match_count" in result
+    assert "already_categorized_elsewhere" in result
+    # Preview only: the internal runtime never applies.
+    assert "applied" not in result
+
+
+async def test_propose_create_payee_rule_carries_the_overwrite_choice(
+    session: AsyncSession, ctx: CallContext, test_workspace, test_user
+):
+    """Correcting a wrong category and filling a blank are different acts.
+
+    Without overwrite the rule walks past every row that already has a
+    category — which is why telling the agent "that one is actually X" used
+    to leave the wrong rows exactly as they were.
+    """
+    from app.models.category import Category
+
+    category = Category(name="Educação", workspace_id=test_workspace.id, user_id=test_user.id)
+    session.add(category)
+    await session.commit()
+
+    handler = REGISTRY["propose_create_payee_rule"].handler
+    default = await handler(
+        session=session, ctx=ctx,
+        match_pattern="COLEGIO EXEMPLO", category_id=str(category.id),
+    )
+    correcting = await handler(
+        session=session, ctx=ctx,
+        match_pattern="COLEGIO EXEMPLO", category_id=str(category.id),
+        overwrite_existing=True, name="Escola das crianças",
+    )
+
+    assert default["proposed"]["overwrite_existing"] is False
+    assert correcting["proposed"]["overwrite_existing"] is True
+    assert correcting["proposed"]["name"] == "Escola das crianças"
+
+
 # --- search_knowledge_base ------------------------------------------------
 
 async def test_search_knowledge_base_requires_agent_id(
